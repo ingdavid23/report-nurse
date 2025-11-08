@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="es">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes de Enfermería</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    
+    .gradient-bg {
+      background: linear-gradient(135deg, #f9a8d4 0%, #f472b6 100%);
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tab-active {
+      background: rgba(255, 255, 255, 0.2);
+      border-bottom: 3px solid #f9a8d4;
+    }
+    
+    .slide-in {
+      animation: slideIn 0.4s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .pulse-glow {
+      animation: pulseGlow 2s infinite;
+    }
+    
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(236, 72, 153, 0.4); }
+      50% { box-shadow: 0 0 30px rgba(236, 72, 153, 0.6); }
+    }
+    
+    .input-modern {
+      background: rgba(255, 255, 255, 0.95);
+      transition: all 0.3s ease;
+      border: 2px solid rgba(236, 72, 153, 0.3);
+      color: #000000;
+    }
+    
+    .input-modern::placeholder {
+      color: #6b7280;
+    }
+    
+    select.input-modern option {
+      color: #000000;
+    }
+    
+    .input-modern:focus {
+      background: rgba(255, 255, 255, 1);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+      border: 2px solid rgba(236, 72, 153, 0.6);
+    }
+    
+    .btn-modern {
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn-modern:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    
+    .btn-modern:active {
+      transform: translateY(0);
+    }
+    
+    .report-card {
+      transition: all 0.3s ease;
+    }
+    
+    .report-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full gradient-bg">
+  <div id="app" class="h-full flex flex-col"></div>
+  <script>
+    let allReports = [];
+    let currentTab = 'nuevo';
+    let actividadesCount = 0;
+    let actividadesData = [];
+
+    const tiposActividad = [
+      { value: 'alimentacion', label: '🍽️ Alimentación', campos: ['hora', 'alimentos', 'observacion'] },
+      { value: 'cena', label: '🌙 Cena', campos: ['hora', 'alimentos', 'observacion'] },
+      { value: 'limpieza_dental', label: '🦷 Limpieza dental', campos: ['hora'] },
+      { value: 'humectacion_masaje', label: '💆 Humectación, masaje y movilidad de miembros inferiores', campos: ['hora'] },
+      { value: 'movilizacion', label: '🚶 Movilización', campos: ['hora', 'desde', 'hacia'] },
+      { value: 'cambio_panal', label: '🧷 Cambio de pañal', campos: ['hora', 'limpieza'] },
+      { value: 'cambio_posicion', label: '🛏️ Cambio de posición', campos: ['hora', 'posicion', 'duracion'] },
+      { value: 'colacion', label: '☕ Colación', campos: ['hora', 'alimento', 'cantidad'] },
+      { value: 'elevacion_miembros', label: '🦵 Elevación de miembros', campos: ['hora', 'duracion'] },
+      { value: 'siesta', label: '😴 Siesta', campos: ['hora', 'minutos'] },
+      { value: 'otro', label: '📝 Otra actividad', campos: ['hora', 'descripcion'] }
+    ];
+
+    function agregarActividad() {
+      const container = document.getElementById('actividadesContainer');
+      const id = actividadesCount++;
+      
+      const actividadDiv = document.createElement('div');
+      actividadDiv.className = 'bg-white bg-opacity-10 p-4 rounded-xl';
+      actividadDiv.id = `actividad-${id}`;
+      
+      actividadDiv.innerHTML = `
+        <div class="flex justify-between items-center mb-3">
+          <span class="text-white font-bold text-sm">Actividad ${actividadesData.length + 1}</span>
+          <button type="button" onclick="eliminarActividad(${id})" class="text-white hover:text-red-300 text-xl">🗑️</button>
+        </div>
+        
+        <div class="space-y-3">
+          <select id="tipo-${id}" onchange="cambiarTipoActividad(${id})" class="input-modern w-full px-4 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="">Seleccionar tipo de actividad...</option>
+            ${tiposActividad.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
+          </select>
+          
+          <div id="campos-${id}" class="space-y-2">
+            <!-- Los campos específicos aparecerán aquí -->
+          </div>
+        </div>
+      `;
+      
+      container.appendChild(actividadDiv);
+    }
+
+    window.agregarActividad = agregarActividad;
+
+    window.cambiarTipoActividad = function(id) {
+      const select = document.getElementById(`tipo-${id}`);
+      const camposDiv = document.getElementById(`campos-${id}`);
+      const tipo = tiposActividad.find(t => t.value === select.value);
+      
+      if (!tipo) {
+        camposDiv.innerHTML = '';
+        return;
+      }
+      
+      let camposHTML = '';
+      
+      if (tipo.campos.includes('hora')) {
+        camposHTML += `
+          <input type="time" id="hora-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Hora">
+        `;
+      }
+      
+      if (tipo.value === 'alimentacion') {
+        camposHTML += `
+          <input type="text" id="alimentos-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimentos (ej: picadillo de res con arroz + vitaloe)">
+          <select id="observacion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="">Observación...</option>
+            <option value="Comió sin dificultad">Comió sin dificultad</option>
+            <option value="Comió con dificultad">Comió con dificultad</option>
+            <option value="Rechazó alimento">Rechazó alimento</option>
+            <option value="Comió parcialmente">Comió parcialmente</option>
+          </select>
+        `;
+      } else if (tipo.value === 'cena') {
+        camposHTML += `
+          <input type="text" id="alimentos-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimentos de la cena">
+          <select id="observacion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="">Observación...</option>
+            <option value="Comió sin dificultad">Comió sin dificultad</option>
+            <option value="Comió con dificultad">Comió con dificultad</option>
+            <option value="Rechazó alimento">Rechazó alimento</option>
+            <option value="Comió parcialmente">Comió parcialmente</option>
+          </select>
+        `;
+      } else if (tipo.value === 'limpieza_dental') {
+        camposHTML += `
+          <p class="text-white text-xs">Se realizará limpieza dental a la hora indicada</p>
+        `;
+      } else if (tipo.value === 'humectacion_masaje') {
+        camposHTML += `
+          <p class="text-white text-xs">Se realizará humectación, masaje y movilidad de miembros inferiores a la hora indicada</p>
+        `;
+      } else if (tipo.value === 'movilizacion') {
+        camposHTML += `
+          <input type="text" id="desde-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Desde (ej: sillón)">
+          <input type="text" id="hacia-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Hacia (ej: camilla)">
+        `;
+      } else if (tipo.value === 'cambio_panal') {
+        camposHTML += `
+          <select id="limpieza-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="limpieza genital">Limpieza genital</option>
+            <option value="limpieza completa">Limpieza completa</option>
+            <option value="limpieza parcial">Limpieza parcial</option>
+          </select>
+        `;
+      } else if (tipo.value === 'cambio_posicion') {
+        camposHTML += `
+          <select id="posicion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="">Seleccionar posición...</option>
+            <option value="lateral derecho">Lateral derecho</option>
+            <option value="lateral izquierdo">Lateral izquierdo</option>
+            <option value="decúbito supino">Decúbito supino</option>
+            <option value="semi-fowler">Semi-fowler</option>
+          </select>
+          <input type="text" id="duracion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Duración (opcional)">
+        `;
+      } else if (tipo.value === 'colacion') {
+        camposHTML += `
+          <input type="text" id="alimento-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimento (ej: atolito de granillo)">
+          <input type="text" id="cantidad-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Cantidad (ej: 1/4, rechazó el resto)">
+        `;
+      } else if (tipo.value === 'elevacion_miembros') {
+        camposHTML += `
+          <input type="text" id="duracion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Duración (ej: 15 minutos)">
+        `;
+      } else if (tipo.value === 'siesta') {
+        camposHTML += `
+          <input type="number" id="minutos-${id}" min="0" max="60" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Minutos (0-60)">
+        `;
+      } else if (tipo.value === 'otro') {
+        camposHTML += `
+          <textarea id="descripcion-${id}" rows="2" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Descripción de la actividad..."></textarea>
+        `;
+      }
+      
+      camposDiv.innerHTML = camposHTML;
+    };
+
+    window.eliminarActividad = function(id) {
+      const elemento = document.getElementById(`actividad-${id}`);
+      if (elemento) {
+        elemento.remove();
+        renumerarActividades();
+      }
+    };
+
+    function renumerarActividades() {
+      const container = document.getElementById('actividadesContainer');
+      const actividades = container.querySelectorAll('[id^="actividad-"]');
+      actividades.forEach((act, index) => {
+        const label = act.querySelector('span');
+        if (label) {
+          label.textContent = `Actividad ${index + 1}`;
+        }
+      });
+    }
+
+    function recopilarActividades() {
+      const container = document.getElementById('actividadesContainer');
+      const actividades = container.querySelectorAll('[id^="actividad-"]');
+      const resultado = [];
+      
+      actividades.forEach(actDiv => {
+        const id = actDiv.id.split('-')[1];
+        const tipoSelect = document.getElementById(`tipo-${id}`);
+        
+        if (!tipoSelect || !tipoSelect.value) return;
+        
+        const tipo = tiposActividad.find(t => t.value === tipoSelect.value);
+        if (!tipo) return;
+        
+        const hora = document.getElementById(`hora-${id}`)?.value || '';
+        let texto = '';
+        
+        if (tipo.value === 'alimentacion') {
+          const alimentos = document.getElementById(`alimentos-${id}`)?.value || '';
+          const obs = document.getElementById(`observacion-${id}`)?.value || '';
+          texto = `${hora} - Se brinda alimentación COMPLETA (${alimentos})`;
+          if (obs) texto += ` *${obs}`;
+        } else if (tipo.value === 'cena') {
+          const alimentos = document.getElementById(`alimentos-${id}`)?.value || '';
+          const obs = document.getElementById(`observacion-${id}`)?.value || '';
+          texto = `${hora} - Se brinda cena (${alimentos})`;
+          if (obs) texto += ` *${obs}`;
+        } else if (tipo.value === 'limpieza_dental') {
+          texto = `${hora} - Se realiza limpieza dental`;
+        } else if (tipo.value === 'humectacion_masaje') {
+          texto = `${hora} - Se realiza humectación, masaje y movilidad de miembros inferiores`;
+        } else if (tipo.value === 'movilizacion') {
+          const desde = document.getElementById(`desde-${id}`)?.value || '';
+          const hacia = document.getElementById(`hacia-${id}`)?.value || '';
+          texto = `${hora} - Se moviliza de ${desde} a ${hacia}`;
+        } else if (tipo.value === 'cambio_panal') {
+          const limpieza = document.getElementById(`limpieza-${id}`)?.value || '';
+          texto = `${hora} - Se realiza cambio de pañal y ${limpieza}`;
+        } else if (tipo.value === 'cambio_posicion') {
+          const posicion = document.getElementById(`posicion-${id}`)?.value || '';
+          const duracion = document.getElementById(`duracion-${id}`)?.value || '';
+          texto = `${hora} - Se realiza cambio de posición a ${posicion}`;
+          if (duracion) texto += ` durante ${duracion}`;
+        } else if (tipo.value === 'colacion') {
+          const alimento = document.getElementById(`alimento-${id}`)?.value || '';
+          const cantidad = document.getElementById(`cantidad-${id}`)?.value || '';
+          texto = `${hora} - Se brinda colación ${cantidad} de ${alimento}`;
+        } else if (tipo.value === 'elevacion_miembros') {
+          const duracion = document.getElementById(`duracion-${id}`)?.value || '';
+          texto = `${hora} - Se realiza cambio de posición y se elevan miembros inferiores durante ${duracion}`;
+        } else if (tipo.value === 'siesta') {
+          const minutos = document.getElementById(`minutos-${id}`)?.value || '';
+          texto = `${hora} - Siesta de ${minutos} minutos`;
+        } else if (tipo.value === 'otro') {
+          const desc = document.getElementById(`descripcion-${id}`)?.value || '';
+          texto = `${hora} - ${desc}`;
+        }
+        
+        if (texto) resultado.push(texto);
+      });
+      
+      return resultado.join('\n');
+    }
+
+    function saveReportsToLocal() {
+      try {
+        localStorage.setItem('nursing_reports', JSON.stringify(allReports));
+        return true;
+      } catch (e) {
+        console.error('Error al guardar en localStorage:', e);
+        return false;
+      }
+    }
+
+    function loadReportsFromLocal() {
+      try {
+        const stored = localStorage.getItem('nursing_reports');
+        if (stored) {
+          allReports = JSON.parse(stored);
+          allReports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
+      } catch (e) {
+        console.error('Error al cargar desde localStorage:', e);
+        allReports = [];
+      }
+    }
+
+    function deleteReportFromLocal(id) {
+      allReports = allReports.filter(r => r.id !== id);
+      return saveReportsToLocal();
+    }
+
+    function addReportToLocal(report) {
+      allReports.unshift(report);
+      return saveReportsToLocal();
+    }
+
+    function initApp() {
+      loadReportsFromLocal();
+      renderApp();
+    }
+
+    function renderApp() {
+      const app = document.getElementById('app');
+      
+      app.innerHTML = `
+        <!-- Header -->
+        <header class="glass-card">
+          <div class="px-6 py-8 text-center">
+            <div class="text-5xl mb-3">🏥</div>
+            <h1 id="main-title" class="text-3xl font-bold text-white tracking-wide drop-shadow-lg">Reportes Médicos</h1>
+            <p class="text-white text-sm mt-2 opacity-90">Sistema de Gestión Profesional</p>
+          </div>
+          
+          <!-- Tabs -->
+          <div class="flex px-4 pb-2">
+            <button onclick="switchTab('nuevo')" class="tab-btn tab-active flex-1 py-4 font-semibold text-white rounded-t-xl transition-all">
+              <span class="text-xl mr-2">📝</span> Nuevo Reporte
+            </button>
+            <button onclick="switchTab('historial')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2">
+              <span class="text-xl mr-2">📚</span> Historial
+            </button>
+          </div>
+        </header>
+
+        <!-- Content -->
+        <main class="flex-1 overflow-y-auto">
+          <div id="tabContent"></div>
+        </main>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-6 left-6 right-6 p-4 rounded-2xl shadow-2xl text-center font-bold transform transition-all duration-300 text-white" style="display: none; transform: translateY(100px);">
+        </div>
+      `;
+      
+      switchTab('nuevo');
+    }
+
+    window.switchTab = function(tab) {
+      currentTab = tab;
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active');
+      });
+      
+      event.target.classList.add('tab-active');
+      
+      const content = document.getElementById('tabContent');
+      
+      if (tab === 'nuevo') {
+        content.innerHTML = `
+          <div class="p-6 space-y-6 slide-in max-w-3xl mx-auto">
+            <form id="reportForm" class="space-y-5">
+              <!-- Paciente -->
+              <div class="glass-card p-5 rounded-2xl">
+                <label class="form-label block mb-3 text-white font-semibold flex items-center">
+                  <span class="text-2xl mr-2">👤</span> Paciente
+                </label>
+                <input type="text" id="paciente" required class="input-modern w-full px-5 py-4 border-0 rounded-xl focus:outline-none font-medium" placeholder="Nombre completo del paciente" value="Doña Ali" readonly>
+              </div>
+
+              <!-- Estado Inicial -->
+              <div class="glass-card p-5 rounded-2xl">
+                <label class="form-label block mb-3 text-white font-semibold flex items-center">
+                  <span class="text-2xl mr-2">💭</span> Estado Inicial
+                </label>
+                <input type="text" id="estado_inicial" required class="input-modern w-full px-5 py-4 border-0 rounded-xl focus:outline-none font-medium" placeholder="Ej: En sillón despierta">
+              </div>
+
+              <!-- Signos Vitales Iniciales -->
+              <div class="glass-card p-5 rounded-2xl">
+                <h3 class="form-label mb-4 text-white font-bold flex items-center text-lg">
+                  <span class="text-2xl mr-2">❤️</span> Signos Vitales Iniciales
+                </h3>
+                <div class="grid grid-cols-3 gap-4">
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">T/A</label>
+                    <input type="text" id="ta_inicial" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="120/60">
+                  </div>
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">F/C</label>
+                    <input type="text" id="fc_inicial" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="61">
+                  </div>
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">SpO2</label>
+                    <input type="text" id="spo2_inicial" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="90%">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actividades -->
+              <div class="glass-card p-5 rounded-2xl">
+                <h3 class="form-label mb-4 text-white font-bold flex items-center text-lg">
+                  <span class="text-2xl mr-2">📋</span> Actividades Realizadas
+                </h3>
+                
+                <div id="actividadesContainer" class="space-y-3 mb-4">
+                  <!-- Las actividades se agregarán aquí -->
+                </div>
+                
+                <button type="button" onclick="agregarActividad()" class="btn-modern w-full text-white py-3 rounded-xl font-bold shadow-lg" style="background: linear-gradient(135deg, #f9a8d4 0%, #ec4899 100%);">
+                  <span class="text-lg mr-2">➕</span> Agregar Actividad
+                </button>
+              </div>
+
+              <!-- Signos Vitales Finales -->
+              <div class="glass-card p-5 rounded-2xl">
+                <h3 class="form-label mb-4 text-white font-bold flex items-center text-lg">
+                  <span class="text-2xl mr-2">💚</span> Signos Vitales Finales
+                </h3>
+                <div class="grid grid-cols-3 gap-4">
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">T/A</label>
+                    <input type="text" id="ta_final" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="130/60">
+                  </div>
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">F/C</label>
+                    <input type="text" id="fc_final" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="80">
+                  </div>
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">SpO2</label>
+                    <input type="text" id="spo2_final" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="91%">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Eliminaciones -->
+              <div class="glass-card p-5 rounded-2xl">
+                <h3 class="form-label mb-4 text-white font-bold flex items-center text-lg">
+                  <span class="text-2xl mr-2">🚽</span> Eliminaciones
+                </h3>
+                <div class="space-y-4">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label class="form-label block text-white text-xs mb-2 font-semibold">Uresis</label>
+                      <input type="text" id="uresis" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Moderada">
+                    </div>
+                    <div>
+                      <label class="form-label block text-white text-xs mb-2 font-semibold">Evacuaciones</label>
+                      <input type="text" id="evacuaciones" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="1">
+                    </div>
+                  </div>
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">Características</label>
+                    <input type="text" id="caracteristicas_evacuacion" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Pastoso y moderado">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Otros -->
+              <div class="glass-card p-5 rounded-2xl space-y-4">
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold flex items-center">
+                    <span class="text-xl mr-2">🛏️</span> Colchón
+                  </label>
+                  <div class="grid grid-cols-2 gap-4">
+                    <select id="colchon_accion" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
+                      <option value="">Seleccionar acción...</option>
+                      <option value="Encender">Encender</option>
+                      <option value="Apagar">Apagar</option>
+                    </select>
+                    <input type="time" id="colchon_hora" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold flex items-center">
+                    <span class="text-xl mr-2">📝</span> Observaciones
+                  </label>
+                  <textarea id="observaciones" rows="3" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Observaciones adicionales..."></textarea>
+                </div>
+              </div>
+
+              <!-- Botón Generar -->
+              <button type="submit" class="btn-primary btn-modern w-full text-white py-5 rounded-2xl font-bold text-lg shadow-2xl pulse-glow" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                <span class="text-2xl mr-2">✨</span> Generar Reporte
+              </button>
+            </form>
+          </div>
+        `;
+        
+        document.getElementById('reportForm').addEventListener('submit', handleFormSubmit);
+      } else {
+        renderReportsList();
+      }
+    };
+
+    function generateReportText(data) {
+      const greeting = "Buenas noches, mi reporte de hoy";
+      
+      let report = `${greeting}\n\n`;
+      report += `Se encuentra a ${data.paciente} ${data.estado_inicial}\n\n`;
+      report += `T/A: ${data.ta_inicial}\n`;
+      report += `F/C: ${data.fc_inicial}\n`;
+      report += `Spo2: ${data.spo2_inicial}\n\n`;
+      report += `${data.actividades}\n\n`;
+      report += `T/A: ${data.ta_final}\n`;
+      report += `F/C: ${data.fc_final}\n`;
+      report += `Spo2: ${data.spo2_final}\n\n`;
+      report += `Uresis: ${data.uresis}\n`;
+      report += `Evacuaciones: ${data.evacuaciones}\n`;
+      report += `Características: ${data.caracteristicas_evacuacion}\n`;
+      
+      if (data.colchon) {
+        report += `Encender colchón: ${data.colchon}\n`;
+      }
+      
+      if (data.observaciones) {
+        report += `\n${data.observaciones}`;
+      }
+      
+      // Sección fija que siempre aparece al final
+      report += `\nAdministración de medicamentos y gotas oftálmicas`;
+      
+      return report;
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      
+      const actividadesTexto = recopilarActividades();
+      
+      if (!actividadesTexto) {
+        showToast('⚠️ Agrega al menos una actividad', 'error');
+        return;
+      }
+      
+      const colchonAccion = document.getElementById('colchon_accion').value;
+      const colchonHora = document.getElementById('colchon_hora').value;
+      let colchonTexto = '';
+      if (colchonAccion && colchonHora) {
+        colchonTexto = `${colchonAccion} colchón: ${colchonHora}`;
+      }
+      
+      const formData = {
+        id: Date.now().toString(),
+        fecha: new Date().toLocaleDateString('es-ES'),
+        paciente: document.getElementById('paciente').value,
+        estado_inicial: document.getElementById('estado_inicial').value,
+        ta_inicial: document.getElementById('ta_inicial').value,
+        fc_inicial: document.getElementById('fc_inicial').value,
+        spo2_inicial: document.getElementById('spo2_inicial').value,
+        actividades: actividadesTexto,
+        ta_final: document.getElementById('ta_final').value,
+        fc_final: document.getElementById('fc_final').value,
+        spo2_final: document.getElementById('spo2_final').value,
+        uresis: document.getElementById('uresis').value,
+        evacuaciones: document.getElementById('evacuaciones').value,
+        caracteristicas_evacuacion: document.getElementById('caracteristicas_evacuacion').value,
+        colchon: colchonTexto,
+        observaciones: document.getElementById('observaciones').value,
+        createdAt: new Date().toISOString()
+      };
+      
+      const success = addReportToLocal(formData);
+      
+      if (success) {
+        const reportText = generateReportText(formData);
+        showReportModal(reportText);
+        e.target.reset();
+        document.getElementById('actividadesContainer').innerHTML = '';
+        actividadesCount = 0;
+        showToast('✓ Reporte guardado exitosamente', 'success');
+      } else {
+        showToast('✗ Error al guardar', 'error');
+      }
+    }
+
+    function showReportModal(reportText) {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 fade-in';
+      modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+      modal.id = 'reportModal';
+      
+      modal.innerHTML = `
+        <div class="glass-card w-full max-w-2xl rounded-3xl p-8 slide-in shadow-2xl">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold text-white flex items-center">
+              <span class="text-3xl mr-3">📄</span> Reporte Generado
+            </h3>
+            <button onclick="this.closest('.fixed').remove()" class="text-white text-4xl leading-none hover:scale-110 transition-transform">×</button>
+          </div>
+          
+          <div class="bg-white p-6 rounded-2xl mb-6 max-h-96 overflow-y-auto shadow-inner">
+            <pre class="whitespace-pre-wrap font-mono text-sm text-gray-800">${reportText}</pre>
+          </div>
+          
+          <button id="copyModalBtn" onclick="copyReportFromModal(this)" class="btn-modern w-full text-white py-4 rounded-2xl font-bold text-lg shadow-xl" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+            <span class="text-xl mr-2">📋</span> Copiar al Portapapeles
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      modal.dataset.reportText = reportText;
+    }
+
+    window.copyReportFromModal = function(btn) {
+      const modal = btn.closest('.fixed');
+      const reportText = modal.dataset.reportText;
+      
+      navigator.clipboard.writeText(reportText).then(() => {
+        btn.innerHTML = '<span class="text-xl mr-2">✓</span> ¡Copiado!';
+        setTimeout(() => {
+          btn.innerHTML = '<span class="text-xl mr-2">📋</span> Copiar al Portapapeles';
+        }, 2000);
+        showToast('✓ Copiado al portapapeles', 'success');
+      });
+    };
+
+    function renderReportsList() {
+      const content = document.getElementById('tabContent');
+      
+      if (allReports.length === 0) {
+        content.innerHTML = `
+          <div class="flex flex-col items-center justify-center p-12 text-center slide-in">
+            <div class="text-7xl mb-4">📭</div>
+            <p class="text-white text-xl font-semibold mb-2">No hay reportes guardados</p>
+            <p class="text-white text-sm opacity-80">Los reportes se guardan localmente en tu dispositivo</p>
+          </div>
+        `;
+        return;
+      }
+      
+      content.innerHTML = `
+        <div class="p-6 space-y-4 slide-in max-w-3xl mx-auto">
+          <div class="glass-card p-4 rounded-2xl text-center mb-6">
+            <p class="text-white font-bold text-lg">
+              <span class="text-2xl mr-2">📊</span>
+              ${allReports.length} reporte${allReports.length !== 1 ? 's' : ''} guardado${allReports.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          ${allReports.map(report => `
+            <div class="glass-card report-card rounded-2xl p-6 shadow-xl">
+              <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                  <h3 class="text-white font-bold text-xl mb-2 flex items-center">
+                    <span class="text-2xl mr-2">👤</span> ${report.paciente}
+                  </h3>
+                  <span class="badge" style="background: rgba(249, 168, 212, 0.3); color: #000;">
+                    📅 ${report.fecha}
+                  </span>
+                </div>
+              </div>
+              
+              <div class="bg-white bg-opacity-20 p-4 rounded-xl mb-4">
+                <p class="text-white text-sm line-clamp-2 font-medium">
+                  ${report.actividades.substring(0, 100)}...
+                </p>
+              </div>
+              
+              <div class="flex gap-3">
+                <button onclick="viewReport('${report.id}')" class="btn-modern flex-1 text-white py-3 rounded-xl font-bold shadow-lg" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                  <span class="text-lg mr-1">👁️</span> Ver
+                </button>
+                <button onclick="editReport('${report.id}')" class="btn-modern flex-1 text-white py-3 rounded-xl font-bold shadow-lg" style="background: linear-gradient(135deg, #f9a8d4 0%, #ec4899 100%);">
+                  <span class="text-lg mr-1">✏️</span> Editar
+                </button>
+                <button onclick="deleteReport('${report.id}')" class="btn-modern flex-1 text-white py-3 rounded-xl font-bold shadow-lg" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                  <span class="text-lg mr-1">🗑️</span> Eliminar
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    window.viewReport = function(id) {
+      const report = allReports.find(r => r.id === id);
+      if (report) {
+        const reportText = generateReportText(report);
+        showReportModal(reportText);
+      }
+    };
+
+    window.editReport = function(id) {
+      const report = allReports.find(r => r.id === id);
+      if (!report) return;
+      
+      // Cambiar a la pestaña de nuevo reporte
+      currentTab = 'nuevo';
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active');
+      });
+      document.querySelectorAll('.tab-btn')[0].classList.add('tab-active');
+      
+      const content = document.getElementById('tabContent');
+      content.innerHTML = `
+        <div class="p-6 space-y-6 slide-in max-w-3xl mx-auto">
+          <div class="glass-card p-4 rounded-2xl text-center mb-4">
+            <p class="text-white font-bold text-lg">
+              <span class="text-2xl mr-2">✏️</span> Editando Reporte
+            </p>
+          </div>
+          
+          <form id="reportForm" class="space-y-5">
+            <!-- Paciente -->
+            <div class="glass-card p-5 rounded-2xl">
+              <label class="form-label block mb-3 text-white font-semibold flex items-center">
+                <span class="text-2xl mr-2">👤</span> Paciente
+              </label>
+              <input type="text" id="paciente" required class="input-modern w-full px-5 py-4 border-0 rounded-xl focus:outline-none font-medium" placeholder="Nombre completo del paciente" value="${report.paciente}">
+            </div>
+
+            <!-- Estado Inicial -->
+            <div class="glass-card p-5 rounded-2xl">
+              <label class="form-label block mb-3 text-white font-semibold flex items-center">
+                <span class="text-2xl mr-2">💭</span> Estado Inicial
+              </label>
+              <input type="text" id="estado_inicial" required class="input-modern w-full px-5 py-4 border-0 rounded-xl focus:outline-none font-medium" placeholder="Ej: En sillón despierta" value="${report.estado_inicial}">
+            </div>
+
+            <!-- Signos Vitales Iniciales -->
+            <div class="glass-card p-5 rounded-2xl">
+              <h3 class="form-label mb-4 text-white font-bold flex items-center text-lg">
+                <span class="text-2xl mr-2">❤️</span> Signos Vitales Iniciales
+              </h3>
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold">T/A</label>
+                  <input type="text" id="ta_inicial" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="120/60" value="${report.ta_inicial}">
+                </div>
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold">F/C</label>
+                  <input type="text" id="fc_inicial" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="61" value="${report.fc_inicial}">
+                </div>
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold">SpO2</label>
+                  <input type="text" id="spo2_inicial" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="90%" value="${report.spo2_inicial}">
+                </div>
+              </div>
+            </div>
+
+            <!-- Actividades -->
+            <div class="glass-card p-5 rounded-2xl">
+              <label class="form-label block mb-3 text-white font-semibold flex items-center">
+                <span class="text-2xl mr-2">📋</span> Actividades Realizadas
+              </label>
+              <textarea id="actividades" required rows="8" class="input-modern w-full px-5 py-4 border-0 rounded-xl focus:outline-none font-medium" placeholder="02:30 - Se brinda alimentación COMPLETA...&#10;03:50 - Se moviliza de sillón a camilla...">${report.actividades}</textarea>
+            </div>
+
+            <!-- Signos Vitales Finales -->
+            <div class="glass-card p-5 rounded-2xl">
+              <h3 class="form-label mb-4 text-white font-bold flex items-center text-lg">
+                <span class="text-2xl mr-2">💚</span> Signos Vitales Finales
+              </h3>
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold">T/A</label>
+                  <input type="text" id="ta_final" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="130/60" value="${report.ta_final}">
+                </div>
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold">F/C</label>
+                  <input type="text" id="fc_final" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="80" value="${report.fc_final}">
+                </div>
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold">SpO2</label>
+                  <input type="text" id="spo2_final" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium text-center" placeholder="91%" value="${report.spo2_final}">
+                </div>
+              </div>
+            </div>
+
+            <!-- Eliminaciones -->
+            <div class="glass-card p-5 rounded-2xl">
+              <h3 class="form-label mb-4 text-white font-bold flex items-center text-lg">
+                <span class="text-2xl mr-2">🚽</span> Eliminaciones
+              </h3>
+              <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">Uresis</label>
+                    <input type="text" id="uresis" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Moderada" value="${report.uresis}">
+                  </div>
+                  <div>
+                    <label class="form-label block text-white text-xs mb-2 font-semibold">Evacuaciones</label>
+                    <input type="text" id="evacuaciones" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="1" value="${report.evacuaciones}">
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label block text-white text-xs mb-2 font-semibold">Características</label>
+                  <input type="text" id="caracteristicas_evacuacion" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Pastoso y moderado" value="${report.caracteristicas_evacuacion}">
+                </div>
+              </div>
+            </div>
+
+            <!-- Otros -->
+            <div class="glass-card p-5 rounded-2xl space-y-4">
+              <div>
+                <label class="form-label block text-white text-xs mb-2 font-semibold flex items-center">
+                  <span class="text-xl mr-2">🛏️</span> Colchón
+                </label>
+                <textarea id="colchon" rows="2" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Ej: Encender colchón: 10:00">${report.colchon || ''}</textarea>
+              </div>
+              <div>
+                <label class="form-label block text-white text-xs mb-2 font-semibold flex items-center">
+                  <span class="text-xl mr-2">📝</span> Observaciones
+                </label>
+                <textarea id="observaciones" rows="3" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Observaciones adicionales...">${report.observaciones || ''}</textarea>
+              </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex gap-4">
+              <button type="button" onclick="cancelEdit()" class="btn-modern flex-1 text-white py-5 rounded-2xl font-bold text-lg shadow-2xl" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);">
+                <span class="text-2xl mr-2">❌</span> Cancelar
+              </button>
+              <button type="submit" class="btn-modern flex-1 text-white py-5 rounded-2xl font-bold text-lg shadow-2xl pulse-glow" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                <span class="text-2xl mr-2">💾</span> Guardar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+      
+      document.getElementById('reportForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const updatedData = {
+          id: report.id,
+          fecha: report.fecha,
+          paciente: document.getElementById('paciente').value,
+          estado_inicial: document.getElementById('estado_inicial').value,
+          ta_inicial: document.getElementById('ta_inicial').value,
+          fc_inicial: document.getElementById('fc_inicial').value,
+          spo2_inicial: document.getElementById('spo2_inicial').value,
+          actividades: document.getElementById('actividades').value,
+          ta_final: document.getElementById('ta_final').value,
+          fc_final: document.getElementById('fc_final').value,
+          spo2_final: document.getElementById('spo2_final').value,
+          uresis: document.getElementById('uresis').value,
+          evacuaciones: document.getElementById('evacuaciones').value,
+          caracteristicas_evacuacion: document.getElementById('caracteristicas_evacuacion').value,
+          colchon: document.getElementById('colchon').value,
+          observaciones: document.getElementById('observaciones').value,
+          createdAt: report.createdAt
+        };
+        
+        // Actualizar el reporte en el array
+        const index = allReports.findIndex(r => r.id === id);
+        if (index !== -1) {
+          allReports[index] = updatedData;
+          const success = saveReportsToLocal();
+          
+          if (success) {
+            showToast('✓ Reporte actualizado exitosamente', 'success');
+            // Volver al historial
+            document.querySelectorAll('.tab-btn')[1].click();
+          } else {
+            showToast('✗ Error al actualizar', 'error');
+          }
+        }
+      });
+    };
+
+    window.cancelEdit = function() {
+      document.querySelectorAll('.tab-btn')[1].click();
+    };
+
+    window.deleteReport = function(id) {
+      const success = deleteReportFromLocal(id);
+      
+      if (success) {
+        renderReportsList();
+        showToast('✓ Reporte eliminado', 'success');
+      } else {
+        showToast('✗ Error al eliminar', 'error');
+      }
+    };
+
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      
+      if (type === 'success') {
+        toast.style.background = 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)';
+      } else {
+        toast.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+      }
+      
+      toast.style.display = 'block';
+      toast.style.transform = 'translateY(0)';
+      
+      setTimeout(() => {
+        toast.style.transform = 'translateY(100px)';
+        setTimeout(() => {
+          toast.style.display = 'none';
+        }, 300);
+      }, 3000);
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'd' || e.key === 'D') {
+        const modal = document.getElementById('reportModal');
+        if (modal && modal.style.display !== 'none') {
+          const copyBtn = document.getElementById('copyModalBtn');
+          if (copyBtn) {
+            copyBtn.click();
+          }
+        }
+      }
+    });
+
+    initApp();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99b86d2db13163b9',t:'MTc2MjY0MDA5OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
