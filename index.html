@@ -535,26 +535,26 @@
                 </div>
               </div>
 
-              <!-- Otros -->
-              <div class="glass-card p-5 rounded-2xl space-y-4">
-                <div>
-                  <label class="form-label block text-white text-xs mb-2 font-semibold flex items-center">
-                    <span class="text-xl mr-2">🛏️</span> Colchón
-                  </label>
-                  <div class="grid grid-cols-2 gap-4">
-                    <select id="colchon_accion" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
-                      <option value="">Seleccionar acción...</option>
-                      <option value="Encender">Encender</option>
-                      <option value="Apagar">Apagar</option>
-                    </select>
-                    <input type="time" id="colchon_hora" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
-                  </div>
-                </div>
-                <div>
-                  <label class="form-label block text-white text-xs mb-2 font-semibold flex items-center">
-                    <span class="text-xl mr-2">📝</span> Observaciones
-                  </label>
-                  <textarea id="observaciones" rows="3" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Observaciones adicionales..."></textarea>
+              <!-- Observaciones -->
+              <div class="glass-card p-5 rounded-2xl">
+                <label class="form-label block mb-3 text-white font-semibold flex items-center">
+                  <span class="text-2xl mr-2">📝</span> Observaciones
+                </label>
+                <textarea id="observaciones" rows="3" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Observaciones adicionales..."></textarea>
+              </div>
+
+              <!-- Colchón -->
+              <div class="glass-card p-5 rounded-2xl">
+                <label class="form-label block mb-3 text-white font-semibold flex items-center">
+                  <span class="text-2xl mr-2">🛏️</span> Colchón
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                  <select id="colchon_accion" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
+                    <option value="">Seleccionar acción...</option>
+                    <option value="Encender">Encender</option>
+                    <option value="Apagar">Apagar</option>
+                  </select>
+                  <input type="time" id="colchon_hora" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
                 </div>
               </div>
 
@@ -598,6 +598,8 @@
       
       // Sección fija que siempre aparece al final
       report += `\nAdministración de medicamentos y gotas oftálmicas`;
+      // Sección fija que siempre aparece al final
+      report += `\nReporte emitido por: Enfermera Yazmin Morales`;
       
       return report;
     }
@@ -990,5 +992,5 @@
 
     initApp();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99b86d2db13163b9',t:'MTc2MjY0MDA5OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99b89bec516c2fe4',t:'MTc2MjY0MjAxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
