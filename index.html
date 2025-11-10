@@ -129,14 +129,13 @@
     let actividadesData = [];
 
     const tiposActividad = [
-      { value: 'alimentacion', label: '🍽️ Alimentación', campos: ['hora', 'alimentos', 'observacion'] },
-      { value: 'cena', label: '🌙 Cena', campos: ['hora', 'alimentos', 'observacion'] },
+      { value: 'alimentacion', label: '🍽️ Alimentación', campos: ['hora', 'tipo_comida', 'alimentos', 'observacion'] },
       { value: 'limpieza_dental', label: '🦷 Limpieza dental', campos: ['hora'] },
       { value: 'humectacion_masaje', label: '💆 Humectación, masaje y movilidad de miembros inferiores', campos: ['hora'] },
       { value: 'movilizacion', label: '🚶 Movilización', campos: ['hora', 'desde', 'hacia'] },
       { value: 'cambio_panal', label: '🧷 Cambio de pañal', campos: ['hora', 'limpieza'] },
       { value: 'cambio_posicion', label: '🛏️ Cambio de posición', campos: ['hora', 'posicion', 'duracion'] },
-      { value: 'colacion', label: '☕ Colación', campos: ['hora', 'alimento', 'cantidad'] },
+      { value: 'colacion', label: '☕ Colación', campos: ['hora', 'alimento', 'observacion'] },
       { value: 'elevacion_miembros', label: '🦵 Elevación de miembros', campos: ['hora', 'duracion'] },
       { value: 'siesta', label: '😴 Siesta', campos: ['hora', 'minutos'] },
       { value: 'otro', label: '📝 Otra actividad', campos: ['hora', 'descripcion'] }
@@ -193,18 +192,12 @@
       
       if (tipo.value === 'alimentacion') {
         camposHTML += `
-          <input type="text" id="alimentos-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimentos (ej: picadillo de res con arroz + vitaloe)">
-          <select id="observacion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
-            <option value="">Observación...</option>
-            <option value="Comió sin dificultad">Comió sin dificultad</option>
-            <option value="Comió con dificultad">Comió con dificultad</option>
-            <option value="Rechazó alimento">Rechazó alimento</option>
-            <option value="Comió parcialmente">Comió parcialmente</option>
+          <select id="tipo_comida-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="">Seleccionar tipo...</option>
+            <option value="comida">🍽️ Comida</option>
+            <option value="cena">🌙 Cena</option>
           </select>
-        `;
-      } else if (tipo.value === 'cena') {
-        camposHTML += `
-          <input type="text" id="alimentos-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimentos de la cena">
+          <input type="text" id="alimentos-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimentos (ej: picadillo de res con arroz + vitaloe)">
           <select id="observacion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
             <option value="">Observación...</option>
             <option value="Comió sin dificultad">Comió sin dificultad</option>
@@ -248,7 +241,13 @@
       } else if (tipo.value === 'colacion') {
         camposHTML += `
           <input type="text" id="alimento-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimento (ej: atolito de granillo)">
-          <input type="text" id="cantidad-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Cantidad (ej: 1/4, rechazó el resto)">
+          <select id="observacion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="">Observación...</option>
+            <option value="Comió sin dificultad">Comió sin dificultad</option>
+            <option value="Comió con dificultad">Comió con dificultad</option>
+            <option value="Rechazó alimento">Rechazó alimento</option>
+            <option value="Comió parcialmente">Comió parcialmente</option>
+          </select>
         `;
       } else if (tipo.value === 'elevacion_miembros') {
         camposHTML += `
@@ -304,14 +303,18 @@
         let texto = '';
         
         if (tipo.value === 'alimentacion') {
+          const tipoComida = document.getElementById(`tipo_comida-${id}`)?.value || '';
           const alimentos = document.getElementById(`alimentos-${id}`)?.value || '';
           const obs = document.getElementById(`observacion-${id}`)?.value || '';
-          texto = `${hora} - Se brinda alimentación COMPLETA (${alimentos})`;
-          if (obs) texto += ` *${obs}`;
-        } else if (tipo.value === 'cena') {
-          const alimentos = document.getElementById(`alimentos-${id}`)?.value || '';
-          const obs = document.getElementById(`observacion-${id}`)?.value || '';
-          texto = `${hora} - Se brinda cena (${alimentos})`;
+          
+          if (tipoComida === 'comida') {
+            texto = `${hora} - Se brinda alimentación COMPLETA (${alimentos})`;
+          } else if (tipoComida === 'cena') {
+            texto = `${hora} - Se brinda cena (${alimentos})`;
+          } else {
+            texto = `${hora} - Se brinda alimentación (${alimentos})`;
+          }
+          
           if (obs) texto += ` *${obs}`;
         } else if (tipo.value === 'limpieza_dental') {
           texto = `${hora} - Se realiza limpieza dental`;
@@ -331,8 +334,9 @@
           if (duracion) texto += ` durante ${duracion}`;
         } else if (tipo.value === 'colacion') {
           const alimento = document.getElementById(`alimento-${id}`)?.value || '';
-          const cantidad = document.getElementById(`cantidad-${id}`)?.value || '';
-          texto = `${hora} - Se brinda colación ${cantidad} de ${alimento}`;
+          const obs = document.getElementById(`observacion-${id}`)?.value || '';
+          texto = `${hora} - Se brinda colación de ${alimento}`;
+          if (obs) texto += ` *${obs}`;
         } else if (tipo.value === 'elevacion_miembros') {
           const duracion = document.getElementById(`duracion-${id}`)?.value || '';
           texto = `${hora} - Se realiza cambio de posición y se elevan miembros inferiores durante ${duracion}`;
@@ -587,6 +591,9 @@
       report += `Uresis: ${data.uresis}\n`;
       report += `Evacuaciones: ${data.evacuaciones}\n`;
       report += `Características: ${data.caracteristicas_evacuacion}\n`;
+      // Sección fija que siempre aparece al final
+      report += `\nAdministración de medicamentos y gotas oftálmicas`;
+      
       
       if (data.colchon) {
         report += `Encender colchón: ${data.colchon}\n`;
@@ -595,11 +602,11 @@
       if (data.observaciones) {
         report += `\n${data.observaciones}`;
       }
+
+      // Sección fija que siempre aparece al final
+      report += `\nReporte emitido por: Enfermera Yazmin Morales `;
       
-      // Sección fija que siempre aparece al final
-      report += `\nAdministración de medicamentos y gotas oftálmicas`;
-      // Sección fija que siempre aparece al final
-      report += `\nReporte emitido por: Enfermera Yazmin Morales`;
+      
       
       return report;
     }
@@ -726,7 +733,7 @@
                   <h3 class="text-white font-bold text-xl mb-2 flex items-center">
                     <span class="text-2xl mr-2">👤</span> ${report.paciente}
                   </h3>
-                  <span class="badge" style="background: rgba(249, 168, 212, 0.3); color: #000;">
+                  <span class="badge" style="background: rgba(249, 168, 212, 0.3); color: #ec4899;">
                     📅 ${report.fecha}
                   </span>
                 </div>
@@ -992,5 +999,5 @@
 
     initApp();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99b89bec516c2fe4',t:'MTc2MjY0MjAxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99c2d0e313e26a49',t:'MTc2Mjc0OTA0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
