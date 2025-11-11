@@ -198,6 +198,11 @@
             <option value="cena">🌙 Cena</option>
           </select>
           <input type="text" id="alimentos-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Alimentos (ej: picadillo de res con arroz + vitaloe)">
+          <select id="cantidad-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
+            <option value="">¿Comió completo o incompleto?</option>
+            <option value="COMPLETA">Completo</option>
+            <option value="INCOMPLETA">Incompleto</option>
+          </select>
           <select id="observacion-${id}" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm">
             <option value="">Observación...</option>
             <option value="Comió sin dificultad">Comió sin dificultad</option>
@@ -205,6 +210,7 @@
             <option value="Rechazó alimento">Rechazó alimento</option>
             <option value="Comió parcialmente">Comió parcialmente</option>
           </select>
+          <textarea id="observacion_libre-${id}" rows="2" class="input-modern w-full px-3 py-2 border-0 rounded-lg focus:outline-none font-medium text-sm" placeholder="Observaciones adicionales (opcional)..."></textarea>
         `;
       } else if (tipo.value === 'limpieza_dental') {
         camposHTML += `
@@ -305,10 +311,12 @@
         if (tipo.value === 'alimentacion') {
           const tipoComida = document.getElementById(`tipo_comida-${id}`)?.value || '';
           const alimentos = document.getElementById(`alimentos-${id}`)?.value || '';
+          const cantidad = document.getElementById(`cantidad-${id}`)?.value || '';
           const obs = document.getElementById(`observacion-${id}`)?.value || '';
+          const obsLibre = document.getElementById(`observacion_libre-${id}`)?.value || '';
           
           if (tipoComida === 'comida') {
-            texto = `${hora} - Se brinda alimentación COMPLETA (${alimentos})`;
+            texto = `${hora} - Se brinda alimentación ${cantidad || 'COMPLETA'} (${alimentos})`;
           } else if (tipoComida === 'cena') {
             texto = `${hora} - Se brinda cena (${alimentos})`;
           } else {
@@ -316,6 +324,7 @@
           }
           
           if (obs) texto += ` *${obs}`;
+          if (obsLibre) texto += ` - ${obsLibre}`;
         } else if (tipo.value === 'limpieza_dental') {
           texto = `${hora} - Se realiza limpieza dental`;
         } else if (tipo.value === 'humectacion_masaje') {
@@ -406,11 +415,14 @@
           
           <!-- Tabs -->
           <div class="flex px-4 pb-2">
-            <button onclick="switchTab('nuevo')" class="tab-btn tab-active flex-1 py-4 font-semibold text-white rounded-t-xl transition-all">
-              <span class="text-xl mr-2">📝</span> Nuevo Reporte
+            <button onclick="switchTab('nuevo')" class="tab-btn tab-active flex-1 py-4 font-semibold text-white rounded-t-xl transition-all text-sm">
+              <span class="text-xl mr-1">📝</span> Nuevo
             </button>
-            <button onclick="switchTab('historial')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2">
-              <span class="text-xl mr-2">📚</span> Historial
+            <button onclick="switchTab('estadisticas')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2 text-sm">
+              <span class="text-xl mr-1">📊</span> Estadísticas
+            </button>
+            <button onclick="switchTab('historial')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2 text-sm">
+              <span class="text-xl mr-1">📚</span> Historial
             </button>
           </div>
         </header>
@@ -439,7 +451,9 @@
       
       const content = document.getElementById('tabContent');
       
-      if (tab === 'nuevo') {
+      if (tab === 'estadisticas') {
+        renderEstadisticas();
+      } else if (tab === 'nuevo') {
         content.innerHTML = `
           <div class="p-6 space-y-6 slide-in max-w-3xl mx-auto">
             <form id="reportForm" class="space-y-5">
@@ -591,9 +605,6 @@
       report += `Uresis: ${data.uresis}\n`;
       report += `Evacuaciones: ${data.evacuaciones}\n`;
       report += `Características: ${data.caracteristicas_evacuacion}\n`;
-      // Sección fija que siempre aparece al final
-      report += `\nAdministración de medicamentos y gotas oftálmicas`;
-      
       
       if (data.colchon) {
         report += `Encender colchón: ${data.colchon}\n`;
@@ -602,11 +613,12 @@
       if (data.observaciones) {
         report += `\n${data.observaciones}`;
       }
-
+      
       // Sección fija que siempre aparece al final
-      report += `\nReporte emitido por: Enfermera Yazmin Morales `;
+      report += `\n\nSe brinda cena\nSe realiza limpieza dental\nAdministración de medicamentos y gotas oftálmicas`;
       
-      
+      // Firma de la enfermera
+      report += `\n\nReporte emitido por: Enfermera Yazmin Morales`;
       
       return report;
     }
@@ -703,6 +715,327 @@
         showToast('✓ Copiado al portapapeles', 'success');
       });
     };
+
+    function renderEstadisticas() {
+      const content = document.getElementById('tabContent');
+      
+      // Obtener fecha actual y calcular inicio de semana (lunes)
+      const hoy = new Date();
+      const diaSemana = hoy.getDay();
+      const diasDesdeInicio = diaSemana === 0 ? 6 : diaSemana - 1; // Lunes = 0
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - diasDesdeInicio);
+      inicioSemana.setHours(0, 0, 0, 0);
+      
+      // Filtrar reportes de esta semana
+      const reportesSemana = allReports.filter(report => {
+        const fechaReporte = new Date(report.createdAt);
+        return fechaReporte >= inicioSemana;
+      });
+      
+      // Calcular estadísticas
+      const totalReportes = reportesSemana.length;
+      
+      // Contar actividades por tipo
+      const actividadesPorTipo = {};
+      reportesSemana.forEach(report => {
+        const actividades = report.actividades.split('\n');
+        actividades.forEach(act => {
+          if (act.includes('alimentación')) actividadesPorTipo['Alimentación'] = (actividadesPorTipo['Alimentación'] || 0) + 1;
+          if (act.includes('moviliza')) actividadesPorTipo['Movilización'] = (actividadesPorTipo['Movilización'] || 0) + 1;
+          if (act.includes('cambio de pañal')) actividadesPorTipo['Cambio de pañal'] = (actividadesPorTipo['Cambio de pañal'] || 0) + 1;
+          if (act.includes('cambio de posición')) actividadesPorTipo['Cambio de posición'] = (actividadesPorTipo['Cambio de posición'] || 0) + 1;
+          if (act.includes('limpieza dental')) actividadesPorTipo['Limpieza dental'] = (actividadesPorTipo['Limpieza dental'] || 0) + 1;
+          if (act.includes('colación')) actividadesPorTipo['Colación'] = (actividadesPorTipo['Colación'] || 0) + 1;
+          if (act.includes('Siesta')) actividadesPorTipo['Siesta'] = (actividadesPorTipo['Siesta'] || 0) + 1;
+        });
+      });
+      
+      // Promedios de signos vitales
+      let sumTA_sistolica = 0, sumTA_diastolica = 0, sumFC = 0, sumSpO2 = 0;
+      let countTA = 0, countFC = 0, countSpO2 = 0;
+      
+      reportesSemana.forEach(report => {
+        // Procesar T/A inicial
+        if (report.ta_inicial) {
+          const ta = report.ta_inicial.split('/');
+          if (ta.length === 2) {
+            sumTA_sistolica += parseInt(ta[0]) || 0;
+            sumTA_diastolica += parseInt(ta[1]) || 0;
+            countTA++;
+          }
+        }
+        // Procesar F/C inicial
+        if (report.fc_inicial) {
+          sumFC += parseInt(report.fc_inicial) || 0;
+          countFC++;
+        }
+        // Procesar SpO2 inicial
+        if (report.spo2_inicial) {
+          const spo2 = parseInt(report.spo2_inicial.replace('%', '')) || 0;
+          sumSpO2 += spo2;
+          countSpO2++;
+        }
+      });
+      
+      const promedioTA = countTA > 0 ? `${Math.round(sumTA_sistolica/countTA)}/${Math.round(sumTA_diastolica/countTA)}` : 'N/A';
+      const promedioFC = countFC > 0 ? Math.round(sumFC/countFC) : 'N/A';
+      const promedioSpO2 = countSpO2 > 0 ? Math.round(sumSpO2/countSpO2) + '%' : 'N/A';
+      
+      // Encontrar actividad más frecuente
+      let actividadMasFrecuente = 'N/A';
+      let maxCount = 0;
+      Object.keys(actividadesPorTipo).forEach(key => {
+        if (actividadesPorTipo[key] > maxCount) {
+          maxCount = actividadesPorTipo[key];
+          actividadMasFrecuente = key;
+        }
+      });
+      
+      // Crear gráfica de barras simple con CSS
+      const maxActividades = Math.max(...Object.values(actividadesPorTipo), 1);
+      const actividadesHTML = Object.keys(actividadesPorTipo).map(key => {
+        const porcentaje = (actividadesPorTipo[key] / maxActividades) * 100;
+        return `
+          <div class="mb-4">
+            <div class="flex justify-between mb-1">
+              <span class="text-white text-sm font-semibold">${key}</span>
+              <span class="text-white text-sm font-bold">${actividadesPorTipo[key]}</span>
+            </div>
+            <div class="w-full bg-white bg-opacity-20 rounded-full h-6 overflow-hidden">
+              <div class="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-500" style="width: ${porcentaje}%; background: linear-gradient(90deg, #f9a8d4 0%, #ec4899 100%);">
+                <span class="text-white text-xs font-bold">${actividadesPorTipo[key]}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Reportes por día de la semana
+      const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      const reportesPorDia = [0, 0, 0, 0, 0, 0, 0];
+      
+      reportesSemana.forEach(report => {
+        const fecha = new Date(report.createdAt);
+        const dia = fecha.getDay();
+        const diaIndex = dia === 0 ? 6 : dia - 1; // Ajustar para que lunes sea 0
+        reportesPorDia[diaIndex]++;
+      });
+      
+      const maxReportesDia = Math.max(...reportesPorDia, 1);
+      const reportesPorDiaHTML = diasSemana.map((dia, index) => {
+        const altura = (reportesPorDia[index] / maxReportesDia) * 100;
+        return `
+          <div class="flex-1 flex flex-col items-center">
+            <div class="w-full flex items-end justify-center" style="height: 120px;">
+              <div class="w-12 rounded-t-xl transition-all duration-500 flex flex-col items-center justify-end pb-2" style="height: ${altura}%; background: linear-gradient(180deg, #ec4899 0%, #f9a8d4 100%);">
+                ${reportesPorDia[index] > 0 ? `<span class="text-white text-xs font-bold">${reportesPorDia[index]}</span>` : ''}
+              </div>
+            </div>
+            <span class="text-white text-xs font-semibold mt-2">${dia}</span>
+          </div>
+        `;
+      }).join('');
+      
+      content.innerHTML = `
+        <div class="p-6 space-y-6 slide-in max-w-4xl mx-auto">
+          <!-- Encabezado -->
+          <div class="glass-card p-6 rounded-2xl text-center">
+            <h2 class="text-white text-2xl font-bold mb-2">📊 Estadísticas Semanales</h2>
+            <p class="text-white text-sm opacity-90">Semana del ${inicioSemana.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+          </div>
+          
+          ${totalReportes === 0 ? `
+            <div class="glass-card p-12 rounded-2xl text-center">
+              <div class="text-6xl mb-4">📈</div>
+              <p class="text-white text-xl font-semibold mb-2">No hay reportes esta semana</p>
+              <p class="text-white text-sm opacity-80">Las estadísticas se actualizarán cuando generes reportes</p>
+            </div>
+          ` : `
+            <!-- Tarjetas de resumen -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="glass-card p-5 rounded-2xl text-center">
+                <div class="text-4xl mb-2">📝</div>
+                <p class="text-white text-3xl font-bold">${totalReportes}</p>
+                <p class="text-white text-sm opacity-90">Reportes generados</p>
+              </div>
+              
+              <div class="glass-card p-5 rounded-2xl text-center">
+                <div class="text-4xl mb-2">⭐</div>
+                <p class="text-white text-lg font-bold">${actividadMasFrecuente}</p>
+                <p class="text-white text-sm opacity-90">Actividad más frecuente</p>
+              </div>
+            </div>
+            
+            <!-- Promedios de signos vitales -->
+            <div class="glass-card p-6 rounded-2xl">
+              <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+                <span class="text-2xl mr-2">❤️</span> Promedios de Signos Vitales
+              </h3>
+              <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white bg-opacity-10 p-4 rounded-xl text-center">
+                  <p class="text-white text-xs mb-1 opacity-80">Tensión Arterial</p>
+                  <p class="text-white text-2xl font-bold">${promedioTA}</p>
+                </div>
+                <div class="bg-white bg-opacity-10 p-4 rounded-xl text-center">
+                  <p class="text-white text-xs mb-1 opacity-80">Frecuencia Cardíaca</p>
+                  <p class="text-white text-2xl font-bold">${promedioFC}</p>
+                </div>
+                <div class="bg-white bg-opacity-10 p-4 rounded-xl text-center">
+                  <p class="text-white text-xs mb-1 opacity-80">Saturación O2</p>
+                  <p class="text-white text-2xl font-bold">${promedioSpO2}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Gráfica de reportes por día -->
+            <div class="glass-card p-6 rounded-2xl">
+              <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+                <span class="text-2xl mr-2">📅</span> Reportes por Día
+              </h3>
+              <div class="flex gap-2">
+                ${reportesPorDiaHTML}
+              </div>
+            </div>
+            
+            <!-- Gráfica de actividades -->
+            <div class="glass-card p-6 rounded-2xl">
+              <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+                <span class="text-2xl mr-2">📋</span> Actividades Realizadas
+              </h3>
+              ${actividadesHTML || '<p class="text-white text-center opacity-80">No hay actividades registradas</p>'}
+            </div>
+            
+            <!-- Estadísticas de Alimentación -->
+            ${(() => {
+              // Analizar datos de alimentación
+              let totalComidas = 0;
+              let comidasCompletas = 0;
+              let comidasIncompletas = 0;
+              let sinDificultad = 0;
+              let conDificultad = 0;
+              let rechazadas = 0;
+              let colaciones = 0;
+              
+              reportesSemana.forEach(report => {
+                const actividades = report.actividades.split('\n');
+                actividades.forEach(act => {
+                  const actLower = act.toLowerCase();
+                  
+                  // Contar comidas y cenas
+                  if (actLower.includes('alimentación') || actLower.includes('cena')) {
+                    totalComidas++;
+                    
+                    if (actLower.includes('completa')) comidasCompletas++;
+                    if (actLower.includes('incompleta')) comidasIncompletas++;
+                    
+                    if (actLower.includes('sin dificultad')) sinDificultad++;
+                    if (actLower.includes('con dificultad')) conDificultad++;
+                    if (actLower.includes('rechazó')) rechazadas++;
+                  }
+                  
+                  // Contar colaciones
+                  if (actLower.includes('colación')) {
+                    colaciones++;
+                  }
+                });
+              });
+              
+              if (totalComidas === 0 && colaciones === 0) {
+                return '<div class="glass-card p-6 rounded-2xl"><h3 class="text-white text-xl font-bold mb-4 flex items-center"><span class="text-2xl mr-2">🍽️</span> Estadísticas de Alimentación</h3><p class="text-white text-center opacity-80">No hay datos de alimentación registrados</p></div>';
+              }
+              
+              const porcentajeCompletas = totalComidas > 0 ? Math.round((comidasCompletas / totalComidas) * 100) : 0;
+              const porcentajeIncompletas = totalComidas > 0 ? Math.round((comidasIncompletas / totalComidas) * 100) : 0;
+              
+              return `
+                <div class="glass-card p-6 rounded-2xl">
+                  <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+                    <span class="text-2xl mr-2">🍽️</span> Estadísticas de Alimentación
+                  </h3>
+                  
+                  <!-- Resumen de comidas -->
+                  <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white bg-opacity-10 p-4 rounded-xl text-center">
+                      <div class="text-3xl mb-1">🍽️</div>
+                      <p class="text-white text-2xl font-bold">${totalComidas}</p>
+                      <p class="text-white text-xs opacity-80">Comidas totales</p>
+                    </div>
+                    <div class="bg-white bg-opacity-10 p-4 rounded-xl text-center">
+                      <div class="text-3xl mb-1">☕</div>
+                      <p class="text-white text-2xl font-bold">${colaciones}</p>
+                      <p class="text-white text-xs opacity-80">Colaciones</p>
+                    </div>
+                  </div>
+                  
+                  <!-- Gráfica de comidas completas vs incompletas -->
+                  ${totalComidas > 0 ? `
+                    <div class="mb-6">
+                      <h4 class="text-white text-sm font-semibold mb-3">Comidas Completas vs Incompletas</h4>
+                      <div class="space-y-3">
+                        <div>
+                          <div class="flex justify-between mb-1">
+                            <span class="text-white text-sm">✅ Completas</span>
+                            <span class="text-white text-sm font-bold">${comidasCompletas} (${porcentajeCompletas}%)</span>
+                          </div>
+                          <div class="w-full bg-white bg-opacity-20 rounded-full h-6 overflow-hidden">
+                            <div class="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-500" style="width: ${porcentajeCompletas}%; background: linear-gradient(90deg, #10b981 0%, #059669 100%);">
+                              <span class="text-white text-xs font-bold">${comidasCompletas}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div class="flex justify-between mb-1">
+                            <span class="text-white text-sm">⚠️ Incompletas</span>
+                            <span class="text-white text-sm font-bold">${comidasIncompletas} (${porcentajeIncompletas}%)</span>
+                          </div>
+                          <div class="w-full bg-white bg-opacity-20 rounded-full h-6 overflow-hidden">
+                            <div class="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-500" style="width: ${porcentajeIncompletas}%; background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);">
+                              <span class="text-white text-xs font-bold">${comidasIncompletas}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ` : ''}
+                  
+                  <!-- Observaciones de alimentación -->
+                  ${(sinDificultad + conDificultad + rechazadas) > 0 ? `
+                    <div>
+                      <h4 class="text-white text-sm font-semibold mb-3">Observaciones</h4>
+                      <div class="grid grid-cols-3 gap-3">
+                        ${sinDificultad > 0 ? `
+                          <div class="bg-white bg-opacity-10 p-3 rounded-xl text-center">
+                            <div class="text-2xl mb-1">😊</div>
+                            <p class="text-white text-xl font-bold">${sinDificultad}</p>
+                            <p class="text-white text-xs opacity-80">Sin dificultad</p>
+                          </div>
+                        ` : ''}
+                        ${conDificultad > 0 ? `
+                          <div class="bg-white bg-opacity-10 p-3 rounded-xl text-center">
+                            <div class="text-2xl mb-1">😐</div>
+                            <p class="text-white text-xl font-bold">${conDificultad}</p>
+                            <p class="text-white text-xs opacity-80">Con dificultad</p>
+                          </div>
+                        ` : ''}
+                        ${rechazadas > 0 ? `
+                          <div class="bg-white bg-opacity-10 p-3 rounded-xl text-center">
+                            <div class="text-2xl mb-1">😔</div>
+                            <p class="text-white text-xl font-bold">${rechazadas}</p>
+                            <p class="text-white text-xs opacity-80">Rechazadas</p>
+                          </div>
+                        ` : ''}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            })()}
+          `}
+        </div>
+      `;
+    }
 
     function renderReportsList() {
       const content = document.getElementById('tabContent');
@@ -999,5 +1332,5 @@
 
     initApp();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99c2d0e313e26a49',t:'MTc2Mjc0OTA0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99d199e122793178',t:'MTc2MjkwNDA3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
