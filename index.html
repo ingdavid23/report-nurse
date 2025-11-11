@@ -604,7 +604,9 @@
       report += `Spo2: ${data.spo2_final}\n\n`;
       report += `Uresis: ${data.uresis}\n`;
       report += `Evacuaciones: ${data.evacuaciones}\n`;
+      report += `\nAdministración de medicamentos y gotas oftálmicas`;
       report += `Características: ${data.caracteristicas_evacuacion}\n`;
+      
       
       if (data.colchon) {
         report += `Encender colchón: ${data.colchon}\n`;
@@ -613,9 +615,8 @@
       if (data.observaciones) {
         report += `\n${data.observaciones}`;
       }
+    
       
-      // Sección fija que siempre aparece al final
-      report += `\n\nSe brinda cena\nSe realiza limpieza dental\nAdministración de medicamentos y gotas oftálmicas`;
       
       // Firma de la enfermera
       report += `\n\nReporte emitido por: Enfermera Yazmin Morales`;
