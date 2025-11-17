@@ -124,6 +124,7 @@
   <div id="app" class="h-full flex flex-col"></div>
   <script>
     let allReports = [];
+    let allReminders = [];
     let currentTab = 'nuevo';
     let actividadesCount = 0;
     let actividadesData = [];
@@ -318,7 +319,7 @@
           if (tipoComida === 'comida') {
             texto = `${hora} - Se brinda alimentación ${cantidad || 'COMPLETA'} (${alimentos})`;
           } else if (tipoComida === 'cena') {
-            texto = `${hora} - Se brinda cena (${alimentos})`;
+            texto = `${hora} - Se brinda cena ${cantidad || 'COMPLETA'} (${alimentos})`;
           } else {
             texto = `${hora} - Se brinda alimentación (${alimentos})`;
           }
@@ -386,6 +387,49 @@
       }
     }
 
+    function saveRemindersToLocal() {
+      try {
+        localStorage.setItem('nursing_reminders', JSON.stringify(allReminders));
+        return true;
+      } catch (e) {
+        console.error('Error al guardar recordatorios:', e);
+        return false;
+      }
+    }
+
+    function loadRemindersFromLocal() {
+      try {
+        const stored = localStorage.getItem('nursing_reminders');
+        if (stored) {
+          allReminders = JSON.parse(stored);
+          allReminders.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+        }
+      } catch (e) {
+        console.error('Error al cargar recordatorios:', e);
+        allReminders = [];
+      }
+    }
+
+    function deleteReminderFromLocal(id) {
+      allReminders = allReminders.filter(r => r.id !== id);
+      return saveRemindersToLocal();
+    }
+
+    function addReminderToLocal(reminder) {
+      allReminders.push(reminder);
+      allReminders.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+      return saveRemindersToLocal();
+    }
+
+    function toggleReminderComplete(id) {
+      const reminder = allReminders.find(r => r.id === id);
+      if (reminder) {
+        reminder.completed = !reminder.completed;
+        return saveRemindersToLocal();
+      }
+      return false;
+    }
+
     function deleteReportFromLocal(id) {
       allReports = allReports.filter(r => r.id !== id);
       return saveReportsToLocal();
@@ -398,6 +442,7 @@
 
     function initApp() {
       loadReportsFromLocal();
+      loadRemindersFromLocal();
       renderApp();
     }
 
@@ -417,6 +462,9 @@
           <div class="flex px-4 pb-2">
             <button onclick="switchTab('nuevo')" class="tab-btn tab-active flex-1 py-4 font-semibold text-white rounded-t-xl transition-all text-sm">
               <span class="text-xl mr-1">📝</span> Nuevo
+            </button>
+            <button onclick="switchTab('agenda')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2 text-sm">
+              <span class="text-xl mr-1">📅</span> Agenda
             </button>
             <button onclick="switchTab('estadisticas')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2 text-sm">
               <span class="text-xl mr-1">📊</span> Estadísticas
@@ -451,7 +499,9 @@
       
       const content = document.getElementById('tabContent');
       
-      if (tab === 'estadisticas') {
+      if (tab === 'agenda') {
+        renderAgenda();
+      } else if (tab === 'estadisticas') {
         renderEstadisticas();
       } else if (tab === 'nuevo') {
         content.innerHTML = `
@@ -598,25 +648,23 @@
       report += `T/A: ${data.ta_inicial}\n`;
       report += `F/C: ${data.fc_inicial}\n`;
       report += `Spo2: ${data.spo2_inicial}\n\n`;
-      report += `${data.actividades}\n\n`;
+      report += `${data.actividades}\n`;
+      report += `\nSe realiza limpieza dental con enjuegue y gasas`;
+      report += `\nAdministración de medicamentos y gotas oftálmicas en el horario indicado\n\n`;
       report += `T/A: ${data.ta_final}\n`;
       report += `F/C: ${data.fc_final}\n`;
       report += `Spo2: ${data.spo2_final}\n\n`;
       report += `Uresis: ${data.uresis}\n`;
       report += `Evacuaciones: ${data.evacuaciones}\n`;
-      report += `\nAdministración de medicamentos y gotas oftálmicas`;
       report += `Características: ${data.caracteristicas_evacuacion}\n`;
       
-      
       if (data.colchon) {
-        report += `Encender colchón: ${data.colchon}\n`;
+        report += `${data.colchon}\n`;
       }
       
       if (data.observaciones) {
         report += `\n${data.observaciones}`;
       }
-    
-      
       
       // Firma de la enfermera
       report += `\n\nReporte emitido por: Enfermera Yazmin Morales`;
@@ -714,6 +762,339 @@
           btn.innerHTML = '<span class="text-xl mr-2">📋</span> Copiar al Portapapeles';
         }, 2000);
         showToast('✓ Copiado al portapapeles', 'success');
+      });
+    };
+
+    function renderAgenda() {
+      const content = document.getElementById('tabContent');
+      
+      // Separar recordatorios pendientes y completados
+      const now = new Date();
+      const pendientes = allReminders.filter(r => !r.completed);
+      const completados = allReminders.filter(r => r.completed);
+      
+      // Separar pendientes en próximos y vencidos
+      const proximos = pendientes.filter(r => new Date(r.datetime) >= now);
+      const vencidos = pendientes.filter(r => new Date(r.datetime) < now);
+      
+      content.innerHTML = `
+        <div class="p-6 space-y-6 slide-in max-w-3xl mx-auto">
+          <!-- Formulario para nuevo recordatorio -->
+          <div class="glass-card p-6 rounded-2xl">
+            <h2 class="text-white text-2xl font-bold mb-4 flex items-center">
+              <span class="text-3xl mr-2">➕</span> Nuevo Recordatorio
+            </h2>
+            
+            <form id="reminderForm" class="space-y-4">
+              <div>
+                <label class="form-label block mb-2 text-white font-semibold text-sm">Título</label>
+                <input type="text" id="reminder_title" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Ej: Administrar medicamento">
+              </div>
+              
+              <div>
+                <label class="form-label block mb-2 text-white font-semibold text-sm">Descripción</label>
+                <textarea id="reminder_description" rows="2" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" placeholder="Detalles adicionales (opcional)"></textarea>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="form-label block mb-2 text-white font-semibold text-sm">Fecha</label>
+                  <input type="date" id="reminder_date" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
+                </div>
+                <div>
+                  <label class="form-label block mb-2 text-white font-semibold text-sm">Hora</label>
+                  <input type="time" id="reminder_time" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
+                </div>
+              </div>
+              
+              <div>
+                <label class="form-label block mb-2 text-white font-semibold text-sm">Categoría</label>
+                <select id="reminder_category" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
+                  <option value="medicamento">💊 Medicamento</option>
+                  <option value="cita">🏥 Cita médica</option>
+                  <option value="actividad">🏃 Actividad</option>
+                  <option value="alimentacion">🍽️ Alimentación</option>
+                  <option value="otro">📌 Otro</option>
+                </select>
+              </div>
+              
+              <button type="submit" class="btn-modern w-full text-white py-4 rounded-xl font-bold text-lg shadow-xl" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                <span class="text-xl mr-2">✨</span> Crear Recordatorio
+              </button>
+            </form>
+          </div>
+          
+          <!-- Recordatorios Vencidos -->
+          ${vencidos.length > 0 ? `
+            <div class="glass-card p-6 rounded-2xl">
+              <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+                <span class="text-2xl mr-2">⚠️</span> Vencidos (${vencidos.length})
+              </h3>
+              <div class="space-y-3">
+                ${vencidos.map(reminder => renderReminderCard(reminder, true)).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          <!-- Próximos Recordatorios -->
+          <div class="glass-card p-6 rounded-2xl">
+            <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+              <span class="text-2xl mr-2">📅</span> Próximos (${proximos.length})
+            </h3>
+            ${proximos.length === 0 ? `
+              <div class="text-center py-8">
+                <div class="text-5xl mb-3">📭</div>
+                <p class="text-white opacity-80">No hay recordatorios próximos</p>
+              </div>
+            ` : `
+              <div class="space-y-3">
+                ${proximos.map(reminder => renderReminderCard(reminder, false)).join('')}
+              </div>
+            `}
+          </div>
+          
+          <!-- Completados -->
+          ${completados.length > 0 ? `
+            <div class="glass-card p-6 rounded-2xl">
+              <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+                <span class="text-2xl mr-2">✅</span> Completados (${completados.length})
+              </h3>
+              <div class="space-y-3">
+                ${completados.map(reminder => renderReminderCard(reminder, false)).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      // Establecer fecha mínima como hoy
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('reminder_date').setAttribute('min', today);
+      document.getElementById('reminder_date').value = today;
+      
+      // Establecer hora actual
+      const now_time = new Date();
+      const hours = String(now_time.getHours()).padStart(2, '0');
+      const minutes = String(now_time.getMinutes()).padStart(2, '0');
+      document.getElementById('reminder_time').value = `${hours}:${minutes}`;
+      
+      document.getElementById('reminderForm').addEventListener('submit', handleReminderSubmit);
+    }
+
+    function renderReminderCard(reminder, isOverdue) {
+      const datetime = new Date(reminder.datetime);
+      const categoryIcons = {
+        medicamento: '💊',
+        cita: '🏥',
+        actividad: '🏃',
+        alimentacion: '🍽️',
+        otro: '📌'
+      };
+      
+      const icon = categoryIcons[reminder.category] || '📌';
+      const dateStr = datetime.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+      const timeStr = datetime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      
+      const cardStyle = reminder.completed 
+        ? 'bg-white bg-opacity-10 opacity-60' 
+        : isOverdue 
+          ? 'bg-red-500 bg-opacity-20 border-2 border-red-400' 
+          : 'bg-white bg-opacity-20';
+      
+      return `
+        <div class="${cardStyle} p-4 rounded-xl transition-all">
+          <div class="flex items-start gap-3">
+            <button onclick="toggleReminder('${reminder.id}')" class="text-3xl flex-shrink-0 hover:scale-110 transition-transform">
+              ${reminder.completed ? '✅' : '⭕'}
+            </button>
+            
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <h4 class="text-white font-bold text-lg ${reminder.completed ? 'line-through opacity-60' : ''}">
+                  ${icon} ${reminder.title}
+                </h4>
+                <div class="flex gap-2 flex-shrink-0">
+                  ${!reminder.completed ? `
+                    <button onclick="editReminder('${reminder.id}')" class="text-white hover:text-blue-300 text-xl">
+                      ✏️
+                    </button>
+                  ` : ''}
+                  <button onclick="deleteReminder('${reminder.id}')" class="text-white hover:text-red-300 text-xl">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+              
+              ${reminder.description ? `
+                <p class="text-white text-sm mb-2 opacity-90 ${reminder.completed ? 'line-through' : ''}">${reminder.description}</p>
+              ` : ''}
+              
+              <div class="flex items-center gap-4 text-white text-sm">
+                <span class="font-semibold">📅 ${dateStr}</span>
+                <span class="font-semibold">🕐 ${timeStr}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function handleReminderSubmit(e) {
+      e.preventDefault();
+      
+      const title = document.getElementById('reminder_title').value;
+      const description = document.getElementById('reminder_description').value;
+      const date = document.getElementById('reminder_date').value;
+      const time = document.getElementById('reminder_time').value;
+      const category = document.getElementById('reminder_category').value;
+      
+      const datetime = new Date(`${date}T${time}`);
+      
+      const reminder = {
+        id: Date.now().toString(),
+        title,
+        description,
+        datetime: datetime.toISOString(),
+        category,
+        completed: false,
+        createdAt: new Date().toISOString()
+      };
+      
+      const success = addReminderToLocal(reminder);
+      
+      if (success) {
+        showToast('✓ Recordatorio creado', 'success');
+        renderAgenda();
+      } else {
+        showToast('✗ Error al crear recordatorio', 'error');
+      }
+    }
+
+    window.toggleReminder = function(id) {
+      const success = toggleReminderComplete(id);
+      if (success) {
+        renderAgenda();
+        const reminder = allReminders.find(r => r.id === id);
+        if (reminder && reminder.completed) {
+          showToast('✓ Recordatorio completado', 'success');
+        } else {
+          showToast('↩️ Recordatorio reactivado', 'success');
+        }
+      }
+    };
+
+    window.deleteReminder = function(id) {
+      const success = deleteReminderFromLocal(id);
+      if (success) {
+        renderAgenda();
+        showToast('✓ Recordatorio eliminado', 'success');
+      } else {
+        showToast('✗ Error al eliminar', 'error');
+      }
+    };
+
+    window.editReminder = function(id) {
+      const reminder = allReminders.find(r => r.id === id);
+      if (!reminder) return;
+      
+      const datetime = new Date(reminder.datetime);
+      const dateStr = datetime.toISOString().split('T')[0];
+      const timeStr = datetime.toTimeString().slice(0, 5);
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 fade-in';
+      modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+      modal.id = 'editReminderModal';
+      
+      modal.innerHTML = `
+        <div class="glass-card w-full max-w-2xl rounded-3xl p-8 slide-in shadow-2xl">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold text-white flex items-center">
+              <span class="text-3xl mr-3">✏️</span> Editar Recordatorio
+            </h3>
+            <button onclick="this.closest('.fixed').remove()" class="text-white text-4xl leading-none hover:scale-110 transition-transform">×</button>
+          </div>
+          
+          <form id="editReminderForm" class="space-y-4">
+            <div>
+              <label class="form-label block mb-2 text-white font-semibold text-sm">Título</label>
+              <input type="text" id="edit_reminder_title" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" value="${reminder.title}">
+            </div>
+            
+            <div>
+              <label class="form-label block mb-2 text-white font-semibold text-sm">Descripción</label>
+              <textarea id="edit_reminder_description" rows="2" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">${reminder.description || ''}</textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="form-label block mb-2 text-white font-semibold text-sm">Fecha</label>
+                <input type="date" id="edit_reminder_date" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" value="${dateStr}">
+              </div>
+              <div>
+                <label class="form-label block mb-2 text-white font-semibold text-sm">Hora</label>
+                <input type="time" id="edit_reminder_time" required class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium" value="${timeStr}">
+              </div>
+            </div>
+            
+            <div>
+              <label class="form-label block mb-2 text-white font-semibold text-sm">Categoría</label>
+              <select id="edit_reminder_category" class="input-modern w-full px-4 py-3 border-0 rounded-xl focus:outline-none font-medium">
+                <option value="medicamento" ${reminder.category === 'medicamento' ? 'selected' : ''}>💊 Medicamento</option>
+                <option value="cita" ${reminder.category === 'cita' ? 'selected' : ''}>🏥 Cita médica</option>
+                <option value="actividad" ${reminder.category === 'actividad' ? 'selected' : ''}>🏃 Actividad</option>
+                <option value="alimentacion" ${reminder.category === 'alimentacion' ? 'selected' : ''}>🍽️ Alimentación</option>
+                <option value="otro" ${reminder.category === 'otro' ? 'selected' : ''}>📌 Otro</option>
+              </select>
+            </div>
+            
+            <div class="flex gap-4">
+              <button type="button" onclick="this.closest('.fixed').remove()" class="btn-modern flex-1 text-white py-4 rounded-xl font-bold text-lg shadow-xl" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);">
+                <span class="text-xl mr-2">❌</span> Cancelar
+              </button>
+              <button type="submit" class="btn-modern flex-1 text-white py-4 rounded-xl font-bold text-lg shadow-xl" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                <span class="text-xl mr-2">💾</span> Guardar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      document.getElementById('editReminderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const title = document.getElementById('edit_reminder_title').value;
+        const description = document.getElementById('edit_reminder_description').value;
+        const date = document.getElementById('edit_reminder_date').value;
+        const time = document.getElementById('edit_reminder_time').value;
+        const category = document.getElementById('edit_reminder_category').value;
+        
+        const newDatetime = new Date(`${date}T${time}`);
+        
+        // Actualizar el recordatorio
+        const index = allReminders.findIndex(r => r.id === id);
+        if (index !== -1) {
+          allReminders[index] = {
+            ...reminder,
+            title,
+            description,
+            datetime: newDatetime.toISOString(),
+            category
+          };
+          
+          allReminders.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+          
+          const success = saveRemindersToLocal();
+          if (success) {
+            modal.remove();
+            renderAgenda();
+            showToast('✓ Recordatorio actualizado', 'success');
+          } else {
+            showToast('✗ Error al actualizar', 'error');
+          }
+        }
       });
     };
 
@@ -1333,5 +1714,5 @@
 
     initApp();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99d199e122793178',t:'MTc2MjkwNDA3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a0294494646a912',t:'MTc2MzQxNzY0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
