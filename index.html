@@ -128,6 +128,394 @@
     let currentTab = 'nuevo';
     let actividadesCount = 0;
     let actividadesData = [];
+    let chatbotMode = 'farmacologia'; // 'farmacologia' o 'recomendaciones'
+    
+    // Base de datos de medicamentos comunes para adultos mayores
+    const medicamentosDB = {
+      'aspirina': {
+        nombre: 'Aspirina (Ácido Acetilsalicílico)',
+        uso: 'Analgésico, antipirético y antiinflamatorio. Prevención de eventos cardiovasculares como infartos y accidentes cerebrovasculares.',
+        efectosAdversos: 'Dolor de estómago, náuseas, vómitos, acidez estomacal, sangrado gastrointestinal.',
+        contraindicaciones: 'Úlcera péptica activa, trastornos de coagulación, alergia a salicilatos, último trimestre del embarazo.',
+        dosis: 'Para prevención cardiovascular: 75-100 mg al día. Para dolor: 500-1000 mg cada 4-6 horas (máximo 4g/día).',
+        noMezclar: 'Anticoagulantes (warfarina), otros AINEs (ibuprofeno), corticosteroides, alcohol.',
+        efectosSecundarios: 'Zumbido en los oídos, mareos, reacciones alérgicas, sangrado prolongado.'
+      },
+      'metformina': {
+        nombre: 'Metformina',
+        uso: 'Tratamiento de diabetes tipo 2. Ayuda a controlar los niveles de azúcar en sangre.',
+        efectosAdversos: 'Diarrea, náuseas, vómitos, flatulencia, dolor abdominal, pérdida de apetito.',
+        contraindicaciones: 'Insuficiencia renal severa, acidosis metabólica, insuficiencia cardíaca descompensada, deshidratación.',
+        dosis: 'Inicial: 500-850 mg una o dos veces al día con alimentos. Máximo: 2550 mg/día dividido en 2-3 tomas.',
+        noMezclar: 'Alcohol (riesgo de acidosis láctica), contrastes yodados, diuréticos.',
+        efectosSecundarios: 'Sabor metálico en la boca, deficiencia de vitamina B12 con uso prolongado, acidosis láctica (raro pero grave).'
+      },
+      'losartan': {
+        nombre: 'Losartán',
+        uso: 'Tratamiento de hipertensión arterial. Protección renal en pacientes diabéticos.',
+        efectosAdversos: 'Mareos, fatiga, hipotensión, dolor de cabeza, tos.',
+        contraindicaciones: 'Embarazo, hiperpotasemia severa, estenosis bilateral de arterias renales.',
+        dosis: 'Inicial: 50 mg una vez al día. Mantenimiento: 25-100 mg al día en una o dos tomas.',
+        noMezclar: 'Suplementos de potasio, diuréticos ahorradores de potasio, AINEs, litio.',
+        efectosSecundarios: 'Aumento de potasio en sangre, función renal alterada, angioedema (raro).'
+      },
+      'omeprazol': {
+        nombre: 'Omeprazol',
+        uso: 'Tratamiento de úlceras gástricas y duodenales, reflujo gastroesofágico, síndrome de Zollinger-Ellison.',
+        efectosAdversos: 'Dolor de cabeza, diarrea, náuseas, dolor abdominal, flatulencia.',
+        contraindicaciones: 'Hipersensibilidad al omeprazol o a otros inhibidores de la bomba de protones.',
+        dosis: '20-40 mg una vez al día, preferiblemente en la mañana antes del desayuno.',
+        noMezclar: 'Clopidogrel (reduce su eficacia), atazanavir, nelfinavir, hierro, ketoconazol.',
+        efectosSecundarios: 'Deficiencia de vitamina B12 y magnesio con uso prolongado, aumento de riesgo de fracturas óseas, infecciones intestinales.'
+      },
+      'atorvastatina': {
+        nombre: 'Atorvastatina',
+        uso: 'Reducción del colesterol y triglicéridos. Prevención de enfermedades cardiovasculares.',
+        efectosAdversos: 'Dolor muscular, dolor de cabeza, náuseas, diarrea, estreñimiento.',
+        contraindicaciones: 'Enfermedad hepática activa, embarazo, lactancia.',
+        dosis: 'Inicial: 10-20 mg una vez al día. Máximo: 80 mg/día.',
+        noMezclar: 'Jugo de toronja, gemfibrozilo, ciclosporina, claritromicina, itraconazol.',
+        efectosSecundarios: 'Elevación de enzimas hepáticas, rabdomiólisis (raro pero grave), diabetes tipo 2 (riesgo aumentado).'
+      },
+      'paracetamol': {
+        nombre: 'Paracetamol (Acetaminofén)',
+        uso: 'Analgésico y antipirético para dolor leve a moderado y fiebre.',
+        efectosAdversos: 'Raros en dosis terapéuticas. Náuseas leves.',
+        contraindicaciones: 'Insuficiencia hepática severa, alergia al paracetamol.',
+        dosis: 'Adultos: 500-1000 mg cada 4-6 horas. Máximo: 4000 mg/día (3000 mg/día en adultos mayores).',
+        noMezclar: 'Alcohol (aumenta riesgo de daño hepático), warfarina (puede potenciar efecto anticoagulante).',
+        efectosSecundarios: 'Daño hepático en sobredosis, reacciones alérgicas cutáneas (raras).'
+      },
+      'furosemida': {
+        nombre: 'Furosemida',
+        uso: 'Diurético para tratamiento de edema, insuficiencia cardíaca, hipertensión.',
+        efectosAdversos: 'Deshidratación, hipotensión, mareos, calambres musculares.',
+        contraindicaciones: 'Anuria, deshidratación severa, hipopotasemia no corregida.',
+        dosis: '20-80 mg al día, preferiblemente en la mañana. Puede ajustarse según respuesta.',
+        noMezclar: 'Aminoglucósidos (aumenta ototoxicidad), digoxina, litio, AINEs.',
+        efectosSecundarios: 'Pérdida de potasio, magnesio y calcio, ototoxicidad (pérdida auditiva), gota.'
+      },
+      'levotiroxina': {
+        nombre: 'Levotiroxina',
+        uso: 'Tratamiento del hipotiroidismo. Reemplazo de hormona tiroidea.',
+        efectosAdversos: 'Síntomas de hipertiroidismo si la dosis es excesiva: palpitaciones, nerviosismo, pérdida de peso.',
+        contraindicaciones: 'Tirotoxicosis no tratada, infarto agudo de miocardio.',
+        dosis: 'Individualizada según niveles de TSH. Típicamente 25-200 mcg al día en ayunas.',
+        noMezclar: 'Suplementos de calcio, hierro, antiácidos (separar 4 horas), warfarina.',
+        efectosSecundarios: 'Arritmias cardíacas, osteoporosis con dosis excesivas, insomnio, temblor.'
+      },
+      'insulina': {
+        nombre: 'Insulina',
+        uso: 'Control de glucosa en sangre en diabetes tipo 1 y tipo 2.',
+        efectosAdversos: 'Hipoglucemia, aumento de peso, reacciones en el sitio de inyección.',
+        contraindicaciones: 'Hipoglucemia, alergia a la insulina o sus componentes.',
+        dosis: 'Altamente individualizada según tipo de insulina, glucemia y necesidades del paciente.',
+        noMezclar: 'Alcohol (aumenta riesgo de hipoglucemia), betabloqueadores (enmascaran síntomas de hipoglucemia).',
+        efectosSecundarios: 'Lipodistrofia en sitios de inyección, reacciones alérgicas, edema.'
+      },
+      'warfarina': {
+        nombre: 'Warfarina',
+        uso: 'Anticoagulante para prevención de trombosis, embolia pulmonar, accidente cerebrovascular.',
+        efectosAdversos: 'Sangrado, hematomas, sangrado de encías.',
+        contraindicaciones: 'Sangrado activo, embarazo, cirugía reciente, hipertensión no controlada.',
+        dosis: 'Individualizada según INR. Típicamente 2-10 mg al día.',
+        noMezclar: 'Aspirina, AINEs, antibióticos (muchos), vitamina K, alcohol, jugo de arándano.',
+        efectosSecundarios: 'Hemorragia grave, necrosis cutánea (raro), osteoporosis con uso prolongado.'
+      },
+      'amlodipino': {
+        nombre: 'Amlodipino',
+        uso: 'Tratamiento de hipertensión arterial y angina de pecho.',
+        efectosAdversos: 'Edema en tobillos, dolor de cabeza, mareos, fatiga, rubor facial.',
+        contraindicaciones: 'Hipotensión severa, shock cardiogénico, estenosis aórtica severa.',
+        dosis: '5-10 mg una vez al día.',
+        noMezclar: 'Jugo de toronja, simvastatina en dosis altas, claritromicina.',
+        efectosSecundarios: 'Palpitaciones, hiperplasia gingival, dolor abdominal.'
+      },
+      'digoxina': {
+        nombre: 'Digoxina',
+        uso: 'Tratamiento de insuficiencia cardíaca y fibrilación auricular.',
+        efectosAdversos: 'Náuseas, vómitos, diarrea, confusión, visión borrosa o amarillenta.',
+        contraindicaciones: 'Bloqueo AV de segundo o tercer grado, síndrome de Wolff-Parkinson-White.',
+        dosis: '0.125-0.25 mg al día. Requiere monitoreo de niveles séricos.',
+        noMezclar: 'Diuréticos (pueden causar hipopotasemia), amiodarona, verapamilo, quinidina.',
+        efectosSecundarios: 'Arritmias cardíacas (toxicidad), bradicardia, alteraciones visuales.'
+      }
+    };
+    
+    // Recomendaciones para situaciones comunes en adultos mayores
+    const recomendacionesDB = {
+      'no quiere comer': {
+        problema: 'Falta de apetito o rechazo de alimentos',
+        causas: [
+          'Pérdida del sentido del gusto',
+          'Problemas dentales o de deglución',
+          'Efectos secundarios de medicamentos',
+          'Depresión o soledad',
+          'Estreñimiento',
+          'Deshidratación'
+        ],
+        recomendaciones: [
+          'Ofrecer comidas pequeñas y frecuentes (5-6 veces al día)',
+          'Preparar alimentos con colores atractivos y presentación agradable',
+          'Servir alimentos a temperatura adecuada',
+          'Ofrecer sus alimentos favoritos',
+          'Asegurar que esté cómodo y en posición adecuada para comer',
+          'Crear un ambiente agradable durante las comidas',
+          'Evitar distracciones (TV, ruidos fuertes)',
+          'Ofrecer líquidos nutritivos si rechaza sólidos (batidos, sopas cremosas)'
+        ],
+        soluciones: [
+          'Suplementos nutricionales (Ensure, Boost) entre comidas',
+          'Alimentos blandos y fáciles de masticar',
+          'Agregar especias y hierbas para mejorar el sabor',
+          'Consultar con el médico sobre medicamentos que afecten el apetito',
+          'Evaluar salud dental y capacidad de deglución',
+          'Considerar alimentación asistida con paciencia y sin presionar'
+        ],
+        alertas: [
+          '⚠️ Si no come por más de 24 horas, contactar al médico',
+          '⚠️ Monitorear signos de deshidratación',
+          '⚠️ Vigilar pérdida de peso significativa'
+        ]
+      },
+      'estreñimiento': {
+        problema: 'Dificultad para evacuar o evacuaciones poco frecuentes',
+        causas: [
+          'Falta de movilidad',
+          'Baja ingesta de líquidos',
+          'Dieta baja en fibra',
+          'Medicamentos (opioides, anticolinérgicos)',
+          'Cambios en la rutina'
+        ],
+        recomendaciones: [
+          'Aumentar ingesta de agua (6-8 vasos al día)',
+          'Incluir alimentos ricos en fibra (frutas, verduras, cereales integrales)',
+          'Establecer horario regular para ir al baño',
+          'Realizar masajes abdominales suaves en sentido de las manecillas del reloj',
+          'Movilización pasiva de piernas si es posible',
+          'Ofrecer ciruelas pasas o jugo de ciruela',
+          'Mantener privacidad y comodidad durante la evacuación'
+        ],
+        soluciones: [
+          'Laxantes suaves según indicación médica (lactulosa, psyllium)',
+          'Supositorios de glicerina si es necesario',
+          'Aceite mineral en pequeñas cantidades',
+          'Probióticos para mejorar flora intestinal',
+          'Revisar medicamentos con el médico'
+        ],
+        alertas: [
+          '⚠️ Si no evacua por más de 3 días, consultar al médico',
+          '⚠️ Dolor abdominal intenso requiere atención inmediata',
+          '⚠️ Sangre en heces debe ser evaluada'
+        ]
+      },
+      'agitación': {
+        problema: 'Inquietud, ansiedad o comportamiento agitado',
+        causas: [
+          'Dolor no expresado',
+          'Necesidad de ir al baño',
+          'Hambre o sed',
+          'Temperatura incómoda',
+          'Ruido o estimulación excesiva',
+          'Confusión o desorientación',
+          'Efectos de medicamentos'
+        ],
+        recomendaciones: [
+          'Mantener la calma y hablar con voz suave',
+          'Verificar necesidades básicas (baño, hambre, sed)',
+          'Evaluar si hay dolor o malestar',
+          'Reducir estímulos ambientales (luz, ruido)',
+          'Ofrecer actividades calmantes (música suave, masajes)',
+          'Mantener rutinas predecibles',
+          'Validar sus sentimientos sin contradecir',
+          'Redirigir la atención a actividades agradables'
+        ],
+        soluciones: [
+          'Técnicas de relajación (respiración profunda)',
+          'Aromaterapia con lavanda',
+          'Contacto físico reconfortante (tomar la mano)',
+          'Paseos cortos o cambio de ambiente',
+          'Música familiar o sonidos de la naturaleza',
+          'Consultar con médico si la agitación es persistente'
+        ],
+        alertas: [
+          '⚠️ Agitación súbita puede indicar infección urinaria',
+          '⚠️ Cambios bruscos de comportamiento requieren evaluación médica',
+          '⚠️ Riesgo de caídas durante episodios de agitación'
+        ]
+      },
+      'dolor': {
+        problema: 'Molestias o dolor que afectan el bienestar',
+        causas: [
+          'Artritis o problemas articulares',
+          'Úlceras por presión',
+          'Contracturas musculares',
+          'Problemas digestivos',
+          'Infecciones',
+          'Posición incómoda prolongada'
+        ],
+        recomendaciones: [
+          'Identificar la ubicación y tipo de dolor',
+          'Cambios de posición cada 2 horas',
+          'Aplicar calor o frío según el tipo de dolor',
+          'Masajes suaves en áreas afectadas',
+          'Asegurar colchón y almohadas adecuadas',
+          'Mantener piel limpia y seca',
+          'Usar escala de dolor para monitorear',
+          'Administrar analgésicos según prescripción médica'
+        ],
+        soluciones: [
+          'Paracetamol para dolor leve a moderado',
+          'Compresas tibias para dolor muscular',
+          'Elevación de miembros si hay edema',
+          'Fisioterapia pasiva',
+          'Revisar y ajustar posición frecuentemente',
+          'Consultar con médico para dolor persistente o severo'
+        ],
+        alertas: [
+          '⚠️ Dolor torácico requiere atención médica inmediata',
+          '⚠️ Dolor abdominal intenso debe ser evaluado',
+          '⚠️ Dolor con fiebre puede indicar infección'
+        ]
+      },
+      'dificultad respiratoria': {
+        problema: 'Respiración dificultosa o sensación de falta de aire',
+        causas: [
+          'Posición inadecuada',
+          'Acumulación de secreciones',
+          'Insuficiencia cardíaca',
+          'Infección respiratoria',
+          'Ansiedad',
+          'EPOC o asma'
+        ],
+        recomendaciones: [
+          'Elevar cabecera de la cama 30-45 grados',
+          'Mantener ambiente bien ventilado',
+          'Evitar ropa ajustada',
+          'Administrar oxígeno según indicación médica',
+          'Técnicas de respiración lenta y profunda',
+          'Mantener hidratación adecuada',
+          'Aspiración de secreciones si es necesario',
+          'Monitorear saturación de oxígeno'
+        ],
+        soluciones: [
+          'Nebulizaciones según prescripción',
+          'Cambios de posición frecuentes',
+          'Fisioterapia respiratoria',
+          'Humidificador en el ambiente',
+          'Evitar exposición a irritantes (humo, perfumes)',
+          'Medicamentos broncodilatadores según indicación'
+        ],
+        alertas: [
+          '⚠️ Dificultad respiratoria severa es una EMERGENCIA',
+          '⚠️ Labios o uñas azuladas requieren atención inmediata',
+          '⚠️ SpO2 menor a 90% debe ser evaluado urgentemente'
+        ]
+      },
+      'úlceras por presión': {
+        problema: 'Lesiones en la piel por presión prolongada',
+        causas: [
+          'Inmovilidad prolongada',
+          'Humedad constante',
+          'Mala nutrición',
+          'Fricción y roce',
+          'Presión sobre prominencias óseas'
+        ],
+        recomendaciones: [
+          'Cambios de posición cada 2 horas (día y noche)',
+          'Usar colchón antiescaras',
+          'Mantener piel limpia y seca',
+          'Inspeccionar piel diariamente',
+          'Usar almohadas para proteger prominencias óseas',
+          'Evitar arrastrar al paciente',
+          'Hidratar la piel regularmente',
+          'Asegurar nutrición e hidratación adecuadas'
+        ],
+        soluciones: [
+          'Apósitos especiales para prevención',
+          'Cremas barrera para proteger la piel',
+          'Suplementos nutricionales si hay déficit',
+          'Cojines de gel o espuma',
+          'Curación según protocolo médico si ya hay lesión',
+          'Consultar con enfermera especializada en heridas'
+        ],
+        alertas: [
+          '⚠️ Enrojecimiento que no desaparece al presionar indica inicio de úlcera',
+          '⚠️ Úlceras profundas requieren atención médica especializada',
+          '⚠️ Signos de infección (olor, pus, fiebre) necesitan tratamiento urgente'
+        ]
+      },
+      'deshidratación': {
+        problema: 'Falta de líquidos en el organismo',
+        causas: [
+          'Baja ingesta de líquidos',
+          'Fiebre',
+          'Diarrea o vómitos',
+          'Uso de diuréticos',
+          'Sudoración excesiva',
+          'Dificultad para tragar'
+        ],
+        recomendaciones: [
+          'Ofrecer líquidos frecuentemente (cada 1-2 horas)',
+          'Variar tipos de líquidos (agua, jugos, caldos, gelatina)',
+          'Usar vasos con popote si facilita la ingesta',
+          'Ofrecer alimentos con alto contenido de agua (sandía, melón)',
+          'Monitorear color de orina (debe ser amarillo claro)',
+          'Registrar ingesta de líquidos',
+          'Evitar bebidas con cafeína o alcohol',
+          'Mantener ambiente fresco'
+        ],
+        soluciones: [
+          'Suero oral o bebidas con electrolitos',
+          'Paletas de hielo o helados',
+          'Sopas y caldos nutritivos',
+          'Gelatina y flanes',
+          'Hidratación intravenosa si es necesario (bajo supervisión médica)',
+          'Ajustar dosis de diuréticos con el médico'
+        ],
+        alertas: [
+          '⚠️ Confusión súbita puede ser signo de deshidratación severa',
+          '⚠️ Orina oscura o ausencia de orina requiere atención médica',
+          '⚠️ Piel muy seca, ojos hundidos, boca seca son signos de alarma'
+        ]
+      },
+      'insomnio': {
+        problema: 'Dificultad para dormir o mantener el sueño',
+        causas: [
+          'Dolor o malestar',
+          'Necesidad de ir al baño',
+          'Medicamentos',
+          'Siestas largas durante el día',
+          'Falta de actividad física',
+          'Ansiedad o preocupación',
+          'Ambiente inadecuado'
+        ],
+        recomendaciones: [
+          'Establecer rutina de sueño regular',
+          'Limitar siestas diurnas (máximo 30 minutos)',
+          'Crear ambiente propicio (oscuro, silencioso, temperatura agradable)',
+          'Evitar cafeína después del mediodía',
+          'Actividad física ligera durante el día',
+          'Baño tibio antes de dormir',
+          'Técnicas de relajación',
+          'Evitar pantallas 1-2 horas antes de dormir'
+        ],
+        soluciones: [
+          'Música relajante o sonidos de la naturaleza',
+          'Aromaterapia con lavanda',
+          'Leche tibia antes de dormir',
+          'Masajes relajantes',
+          'Revisar medicamentos con el médico',
+          'Melatonina según indicación médica',
+          'Asegurar que no haya dolor o malestar'
+        ],
+        alertas: [
+          '⚠️ Insomnio persistente afecta la salud general',
+          '⚠️ Evitar automedicación con sedantes',
+          '⚠️ Consultar si el insomnio dura más de 2 semanas'
+        ]
+      }
+    };
 
     const tiposActividad = [
       { value: 'alimentacion', label: '🍽️ Alimentación', campos: ['hora', 'tipo_comida', 'alimentos', 'observacion'] },
@@ -453,7 +841,7 @@
         <!-- Header -->
         <header class="glass-card">
           <div class="px-6 py-8 text-center">
-            <div class="text-5xl mb-3">🏥</div>
+            <div class="text-5xl mb-3">👩‍⚕️</div>
             <h1 id="main-title" class="text-3xl font-bold text-white tracking-wide drop-shadow-lg">Reportes Médicos</h1>
             <p class="text-white text-sm mt-2 opacity-90">Sistema de Gestión Profesional</p>
           </div>
@@ -468,6 +856,9 @@
             </button>
             <button onclick="switchTab('estadisticas')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2 text-sm">
               <span class="text-xl mr-1">📊</span> Estadísticas
+            </button>
+            <button onclick="switchTab('chatbot')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2 text-sm">
+              <span class="text-xl mr-1">🤖</span> ChatBot
             </button>
             <button onclick="switchTab('historial')" class="tab-btn flex-1 py-4 font-semibold text-white rounded-t-xl transition-all ml-2 text-sm">
               <span class="text-xl mr-1">📚</span> Historial
@@ -503,6 +894,8 @@
         renderAgenda();
       } else if (tab === 'estadisticas') {
         renderEstadisticas();
+      } else if (tab === 'chatbot') {
+        renderChatbot();
       } else if (tab === 'nuevo') {
         content.innerHTML = `
           <div class="p-6 space-y-6 slide-in max-w-3xl mx-auto">
@@ -628,7 +1021,7 @@
 
               <!-- Botón Generar -->
               <button type="submit" class="btn-primary btn-modern w-full text-white py-5 rounded-2xl font-bold text-lg shadow-2xl pulse-glow" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
-                <span class="text-2xl mr-2">✨</span> Generar Reporte
+                <span class="text-2xl mr-2">���</span> Generar Reporte
               </button>
             </form>
           </div>
@@ -839,7 +1232,7 @@
           <!-- Próximos Recordatorios -->
           <div class="glass-card p-6 rounded-2xl">
             <h3 class="text-white text-xl font-bold mb-4 flex items-center">
-              <span class="text-2xl mr-2">📅</span> Próximos (${proximos.length})
+              <span class="text-2xl mr-2">��</span> Próximos (${proximos.length})
             </h3>
             ${proximos.length === 0 ? `
               <div class="text-center py-8">
@@ -905,7 +1298,7 @@
         <div class="${cardStyle} p-4 rounded-xl transition-all">
           <div class="flex items-start gap-3">
             <button onclick="toggleReminder('${reminder.id}')" class="text-3xl flex-shrink-0 hover:scale-110 transition-transform">
-              ${reminder.completed ? '✅' : '⭕'}
+              ${reminder.completed ? '���' : '⭕'}
             </button>
             
             <div class="flex-1 min-w-0">
@@ -916,7 +1309,7 @@
                 <div class="flex gap-2 flex-shrink-0">
                   ${!reminder.completed ? `
                     <button onclick="editReminder('${reminder.id}')" class="text-white hover:text-blue-300 text-xl">
-                      ✏️
+                      ✏��
                     </button>
                   ` : ''}
                   <button onclick="deleteReminder('${reminder.id}')" class="text-white hover:text-red-300 text-xl">
@@ -1097,6 +1490,813 @@
         }
       });
     };
+
+    function renderChatbot() {
+      const content = document.getElementById('tabContent');
+      
+      content.innerHTML = `
+        <div class="p-6 space-y-6 slide-in max-w-4xl mx-auto">
+          <!-- Selector de modo -->
+          <div class="glass-card p-6 rounded-2xl">
+            <h2 class="text-white text-2xl font-bold mb-4 text-center flex items-center justify-center">
+              <span class="text-3xl mr-2">🤖</span> Asistente de Enfermería
+            </h2>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <button onclick="setChatbotMode('farmacologia')" id="btn-farmacologia" class="btn-modern py-6 rounded-xl font-bold text-lg shadow-xl transition-all ${chatbotMode === 'farmacologia' ? 'text-white' : 'text-white opacity-60'}" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                <div class="text-4xl mb-2">💊</div>
+                <div>Bitácora de Farmacología</div>
+              </button>
+              
+              <button onclick="setChatbotMode('recomendaciones')" id="btn-recomendaciones" class="btn-modern py-6 rounded-xl font-bold text-lg shadow-xl transition-all ${chatbotMode === 'recomendaciones' ? 'text-white' : 'text-white opacity-60'}" style="background: linear-gradient(135deg, #f9a8d4 0%, #ec4899 100%);">
+                <div class="text-4xl mb-2">💡</div>
+                <div>Recomendaciones de Cuidado</div>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Área de búsqueda -->
+          <div class="glass-card p-6 rounded-2xl">
+            <div id="searchArea"></div>
+          </div>
+          
+          <!-- Área de resultados -->
+          <div id="resultsArea"></div>
+        </div>
+      `;
+      
+      updateChatbotInterface();
+    }
+    
+    window.setChatbotMode = function(mode) {
+      chatbotMode = mode;
+      
+      // Actualizar estilos de botones
+      const btnFarma = document.getElementById('btn-farmacologia');
+      const btnReco = document.getElementById('btn-recomendaciones');
+      
+      if (mode === 'farmacologia') {
+        btnFarma.classList.remove('opacity-60');
+        btnReco.classList.add('opacity-60');
+      } else {
+        btnFarma.classList.add('opacity-60');
+        btnReco.classList.remove('opacity-60');
+      }
+      
+      updateChatbotInterface();
+    };
+    
+    function updateChatbotInterface() {
+      const searchArea = document.getElementById('searchArea');
+      const resultsArea = document.getElementById('resultsArea');
+      
+      if (chatbotMode === 'farmacologia') {
+        searchArea.innerHTML = `
+          <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+            <span class="text-2xl mr-2">🔍</span> Buscar Medicamento
+          </h3>
+          <p class="text-white text-sm mb-4 opacity-90">
+            Ingresa el nombre del medicamento para obtener información detallada sobre su uso, efectos y precauciones.
+          </p>
+          
+          <div class="flex gap-3">
+            <input type="text" id="medicamentoInput" class="input-modern flex-1 px-5 py-4 border-0 rounded-xl focus:outline-none font-medium" placeholder="Ej: Aspirina, Metformina, Losartán..." onkeypress="if(event.key==='Enter') buscarMedicamento()">
+            <button onclick="buscarMedicamento()" class="btn-modern text-white px-8 py-4 rounded-xl font-bold shadow-xl" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+              <span class="text-xl">🔍</span>
+            </button>
+          </div>
+          
+          <div class="mt-4">
+            <p class="text-white text-xs mb-2 opacity-80">Medicamentos disponibles:</p>
+            <div class="flex flex-wrap gap-2">
+              ${Object.keys(medicamentosDB).map(med => `
+                <button onclick="buscarMedicamentoDirecto('${med}')" class="bg-white bg-opacity-20 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-opacity-30 transition-all">
+                  ${medicamentosDB[med].nombre.split('(')[0].trim()}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        
+        resultsArea.innerHTML = '';
+      } else {
+        searchArea.innerHTML = `
+          <h3 class="text-white text-xl font-bold mb-4 flex items-center">
+            <span class="text-2xl mr-2">💬</span> Consultar Situación
+          </h3>
+          <p class="text-white text-sm mb-4 opacity-90">
+            Describe la situación o problema que está presentando el paciente (adulto mayor de 93 años, con movilidad limitada).
+          </p>
+          
+          <div class="flex gap-3">
+            <input type="text" id="situacionInput" class="input-modern flex-1 px-5 py-4 border-0 rounded-xl focus:outline-none font-medium" placeholder="Ej: No quiere comer, estreñimiento, agitación..." onkeypress="if(event.key==='Enter') buscarRecomendacion()">
+            <button onclick="buscarRecomendacion()" class="btn-modern text-white px-8 py-4 rounded-xl font-bold shadow-xl" style="background: linear-gradient(135deg, #f9a8d4 0%, #ec4899 100%);">
+              <span class="text-xl">💡</span>
+            </button>
+          </div>
+          
+          <div class="mt-4">
+            <p class="text-white text-xs mb-2 opacity-80">Situaciones comunes:</p>
+            <div class="flex flex-wrap gap-2">
+              ${Object.keys(recomendacionesDB).map(sit => `
+                <button onclick="buscarRecomendacionDirecta('${sit}')" class="bg-white bg-opacity-20 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-opacity-30 transition-all">
+                  ${sit.charAt(0).toUpperCase() + sit.slice(1)}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        
+        resultsArea.innerHTML = '';
+      }
+    }
+    
+    window.buscarMedicamento = async function() {
+      const input = document.getElementById('medicamentoInput');
+      const query = input.value.toLowerCase().trim();
+      
+      if (!query) {
+        showToast('⚠️ Ingresa el nombre de un medicamento', 'error');
+        return;
+      }
+      
+      // Mostrar indicador de carga
+      document.getElementById('resultsArea').innerHTML = `
+        <div class="glass-card p-12 rounded-2xl text-center fade-in">
+          <div class="text-6xl mb-4 animate-pulse">🔍</div>
+          <p class="text-white text-xl font-semibold mb-2">Buscando información...</p>
+          <p class="text-white text-sm opacity-80">Consultando bases de datos médicas</p>
+        </div>
+      `;
+      
+      try {
+        // Buscar primero en la base de datos local
+        let medicamento = null;
+        let key = null;
+        
+        for (const [k, v] of Object.entries(medicamentosDB)) {
+          if (k.includes(query) || v.nombre.toLowerCase().includes(query)) {
+            medicamento = v;
+            key = k;
+            break;
+          }
+        }
+        
+        if (medicamento) {
+          // Si se encuentra en la base local, mostrar esa información
+          mostrarInfoMedicamento(medicamento);
+          return;
+        }
+        
+        // Si no está en la base local, buscar en internet usando una API
+        await buscarMedicamentoEnInternet(query);
+        
+      } catch (error) {
+        console.error('Error al buscar medicamento:', error);
+        document.getElementById('resultsArea').innerHTML = `
+          <div class="glass-card p-8 rounded-2xl text-center fade-in">
+            <div class="text-6xl mb-4">⚠️</div>
+            <h3 class="text-white text-xl font-bold mb-2">Error en la búsqueda</h3>
+            <p class="text-white text-sm opacity-80 mb-4">No se pudo conectar con las bases de datos médicas.</p>
+            <button onclick="mostrarInfoMedicamentoGenerico('${query}')" class="btn-modern text-white px-6 py-3 rounded-xl font-bold shadow-xl" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+              Ver Recomendaciones Generales
+            </button>
+          </div>
+        `;
+      }
+    };
+    
+    async function buscarMedicamentoEnInternet(nombreMedicamento) {
+      // Usar OpenFDA API para obtener información de medicamentos
+      const nombreCapitalizado = nombreMedicamento.charAt(0).toUpperCase() + nombreMedicamento.slice(1);
+      
+      try {
+        // Intentar buscar en OpenFDA (API pública de la FDA)
+        const urlFDA = `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(nombreMedicamento)}"&limit=1`;
+        
+        const response = await fetch(urlFDA);
+        
+        if (!response.ok) {
+          throw new Error('No se encontró información');
+        }
+        
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+          const drugInfo = data.results[0];
+          mostrarInfoMedicamentoDeAPI(drugInfo, nombreCapitalizado);
+        } else {
+          // Si no se encuentra, mostrar información genérica
+          mostrarInfoMedicamentoGenerico(nombreMedicamento);
+        }
+        
+      } catch (error) {
+        console.error('Error en búsqueda FDA:', error);
+        // Si falla la API de FDA, mostrar información genérica
+        mostrarInfoMedicamentoGenerico(nombreMedicamento);
+      }
+    }
+    
+    function mostrarInfoMedicamentoDeAPI(drugInfo, nombreMedicamento) {
+      // Extraer información de la respuesta de la API
+      const brandName = drugInfo.openfda?.brand_name?.[0] || nombreMedicamento;
+      const genericName = drugInfo.openfda?.generic_name?.[0] || 'No disponible';
+      const purpose = drugInfo.purpose?.[0] || drugInfo.indications_and_usage?.[0] || 'No disponible';
+      const dosage = drugInfo.dosage_and_administration?.[0] || 'Consultar con médico';
+      const warnings = drugInfo.warnings?.[0] || 'Consultar prospecto completo';
+      const adverseReactions = drugInfo.adverse_reactions?.[0] || 'Consultar con médico';
+      const contraindications = drugInfo.contraindications?.[0] || 'Consultar con médico';
+      const drugInteractions = drugInfo.drug_interactions?.[0] || 'Consultar con médico o farmacéutico';
+      
+      // Función para traducir texto usando un servicio de traducción
+      const translateText = async (text) => {
+        if (!text || text === 'No disponible' || text === 'Consultar con médico' || text === 'Consultar prospecto completo' || text === 'Consultar con médico o farmacéutico') {
+          return text;
+        }
+        
+        try {
+          // Usar API de traducción gratuita de MyMemory
+          const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.substring(0, 500))}&langpair=en|es`);
+          const data = await response.json();
+          
+          if (data.responseStatus === 200 && data.responseData.translatedText) {
+            return data.responseData.translatedText;
+          }
+          return text; // Si falla, devolver texto original
+        } catch (error) {
+          console.error('Error en traducción:', error);
+          return text; // Si falla, devolver texto original
+        }
+      };
+      
+      // Limpiar textos muy largos
+      const cleanText = (text, maxLength = 500) => {
+        if (!text || text === 'No disponible') return text;
+        const cleaned = text.replace(/\s+/g, ' ').trim();
+        return cleaned.length > maxLength ? cleaned.substring(0, maxLength) + '...' : cleaned;
+      };
+      
+      // Traducir todos los textos al español
+      Promise.all([
+        translateText(cleanText(purpose, 600)),
+        translateText(cleanText(dosage, 600)),
+        translateText(cleanText(warnings, 600)),
+        translateText(cleanText(contraindications, 600)),
+        translateText(cleanText(drugInteractions, 600)),
+        translateText(cleanText(adverseReactions, 600))
+      ]).then(([purposeES, dosageES, warningsES, contraindicationsES, interactionsES, reactionsES]) => {
+        document.getElementById('resultsArea').innerHTML = `
+          <div class="glass-card p-6 rounded-2xl fade-in">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h3 class="text-white text-2xl font-bold flex items-center">
+                  <span class="text-3xl mr-3">💊</span> ${brandName}
+                </h3>
+                <p class="text-white text-sm opacity-80 mt-1">Nombre genérico: ${genericName}</p>
+              </div>
+              <div class="bg-green-500 bg-opacity-30 px-3 py-1 rounded-full">
+                <span class="text-white text-xs font-bold">🌐 Información en línea</span>
+              </div>
+            </div>
+            
+            <div class="space-y-5">
+              <!-- Para qué sirve -->
+              <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">✅</span> Para qué sirve / Indicaciones
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${purposeES}</p>
+              </div>
+              
+              <!-- Dosis recomendada -->
+              <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">💉</span> Dosificación y Administración
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${dosageES}</p>
+              </div>
+              
+              <!-- Advertencias -->
+              <div class="bg-orange-500 bg-opacity-20 p-5 rounded-xl border-2 border-orange-400">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">⚠️</span> Advertencias
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${warningsES}</p>
+              </div>
+              
+              <!-- Contraindicaciones -->
+              <div class="bg-red-500 bg-opacity-20 p-5 rounded-xl border-2 border-red-400">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">🚫</span> Contraindicaciones
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${contraindicationsES}</p>
+              </div>
+              
+              <!-- Interacciones -->
+              <div class="bg-purple-500 bg-opacity-20 p-5 rounded-xl border-2 border-purple-400">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">⛔</span> Interacciones Medicamentosas
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${interactionsES}</p>
+              </div>
+              
+              <!-- Reacciones adversas -->
+              <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">⚡</span> Reacciones Adversas
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${reactionsES}</p>
+              </div>
+            </div>
+            
+            <div class="mt-6 bg-blue-500 bg-opacity-20 p-4 rounded-xl border-2 border-blue-400">
+              <p class="text-white text-xs text-center">
+                <span class="font-bold">⚕️ Nota importante:</span> Esta información proviene de bases de datos médicas oficiales (FDA). Siempre consulte con el médico tratante antes de administrar o modificar medicamentos.
+              </p>
+            </div>
+            
+            <div class="mt-4 bg-yellow-500 bg-opacity-20 p-4 rounded-xl border-2 border-yellow-400">
+              <p class="text-white text-xs text-center">
+                <span class="font-bold">📋 Fuente:</span> U.S. Food and Drug Administration (FDA) - OpenFDA API
+              </p>
+            </div>
+            
+            <div class="mt-4 bg-green-500 bg-opacity-20 p-4 rounded-xl border-2 border-green-400">
+              <p class="text-white text-xs text-center">
+                <span class="font-bold">🌐 Traducción automática:</span> La información ha sido traducida automáticamente del inglés al español. Para mayor precisión, consulte con un profesional de la salud.
+              </p>
+            </div>
+          </div>
+        `;
+        
+        // Scroll suave al resultado
+        document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }).catch(error => {
+        console.error('Error al traducir:', error);
+        // Si falla la traducci���n, mostrar en inglés
+        document.getElementById('resultsArea').innerHTML = `
+          <div class="glass-card p-6 rounded-2xl fade-in">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h3 class="text-white text-2xl font-bold flex items-center">
+                  <span class="text-3xl mr-3">💊</span> ${brandName}
+                </h3>
+                <p class="text-white text-sm opacity-80 mt-1">Nombre genérico: ${genericName}</p>
+              </div>
+              <div class="bg-green-500 bg-opacity-30 px-3 py-1 rounded-full">
+                <span class="text-white text-xs font-bold">🌐 Información en línea</span>
+              </div>
+            </div>
+            
+            <div class="bg-yellow-500 bg-opacity-20 p-4 rounded-xl border-2 border-yellow-400 mb-5">
+              <p class="text-white text-sm text-center">
+                <span class="font-bold">⚠️ Información en inglés:</span> No se pudo traducir automáticamente. La información se muestra en el idioma original.
+              </p>
+            </div>
+            
+            <div class="space-y-5">
+              <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">✅</span> Para qué sirve / Indicaciones
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${cleanText(purpose, 600)}</p>
+              </div>
+              
+              <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">💉</span> Dosificación y Administración
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${cleanText(dosage, 600)}</p>
+              </div>
+              
+              <div class="bg-orange-500 bg-opacity-20 p-5 rounded-xl border-2 border-orange-400">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">⚠️</span> Advertencias
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${cleanText(warnings, 600)}</p>
+              </div>
+              
+              <div class="bg-red-500 bg-opacity-20 p-5 rounded-xl border-2 border-red-400">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">🚫</span> Contraindicaciones
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${cleanText(contraindications, 600)}</p>
+              </div>
+              
+              <div class="bg-purple-500 bg-opacity-20 p-5 rounded-xl border-2 border-purple-400">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">⛔</span> Interacciones Medicamentosas
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${cleanText(drugInteractions, 600)}</p>
+              </div>
+              
+              <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+                <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                  <span class="text-xl mr-2">⚡</span> Reacciones Adversas
+                </h4>
+                <p class="text-white text-sm leading-relaxed">${cleanText(adverseReactions, 600)}</p>
+              </div>
+            </div>
+            
+            <div class="mt-6 bg-blue-500 bg-opacity-20 p-4 rounded-xl border-2 border-blue-400">
+              <p class="text-white text-xs text-center">
+                <span class="font-bold">⚕️ Nota importante:</span> Esta información proviene de bases de datos médicas oficiales (FDA). Siempre consulte con el médico tratante antes de administrar o modificar medicamentos.
+              </p>
+            </div>
+          </div>
+        `;
+        
+        document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+    
+    window.buscarMedicamentoDirecto = function(key) {
+      const medicamento = medicamentosDB[key];
+      document.getElementById('medicamentoInput').value = medicamento.nombre.split('(')[0].trim();
+      mostrarInfoMedicamento(medicamento);
+    };
+    
+    function mostrarInfoMedicamento(med) {
+      document.getElementById('resultsArea').innerHTML = `
+        <div class="glass-card p-6 rounded-2xl fade-in">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-white text-2xl font-bold flex items-center">
+              <span class="text-3xl mr-3">💊</span> ${med.nombre}
+            </h3>
+          </div>
+          
+          <div class="space-y-5">
+            <!-- Para qué sirve -->
+            <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">✅</span> Para qué sirve
+              </h4>
+              <p class="text-white text-sm leading-relaxed">${med.uso}</p>
+            </div>
+            
+            <!-- Dosis recomendada -->
+            <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">💉</span> Dosis recomendada
+              </h4>
+              <p class="text-white text-sm leading-relaxed">${med.dosis}</p>
+            </div>
+            
+            <!-- Efectos adversos -->
+            <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">⚠️</span> Efectos adversos
+              </h4>
+              <p class="text-white text-sm leading-relaxed">${med.efectosAdversos}</p>
+            </div>
+            
+            <!-- Contraindicaciones -->
+            <div class="bg-red-500 bg-opacity-20 p-5 rounded-xl border-2 border-red-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">🚫</span> Contraindicaciones
+              </h4>
+              <p class="text-white text-sm leading-relaxed">${med.contraindicaciones}</p>
+            </div>
+            
+            <!-- No mezclar con -->
+            <div class="bg-orange-500 bg-opacity-20 p-5 rounded-xl border-2 border-orange-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">⛔</span> No mezclar con
+              </h4>
+              <p class="text-white text-sm leading-relaxed">${med.noMezclar}</p>
+            </div>
+            
+            <!-- Efectos secundarios -->
+            <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">⚡</span> Efectos secundarios
+              </h4>
+              <p class="text-white text-sm leading-relaxed">${med.efectosSecundarios}</p>
+            </div>
+          </div>
+          
+          <div class="mt-6 bg-blue-500 bg-opacity-20 p-4 rounded-xl border-2 border-blue-400">
+            <p class="text-white text-xs text-center">
+              <span class="font-bold">⚕️ Nota importante:</span> Esta información es de referencia general. Siempre consulte con el médico tratante antes de administrar o modificar medicamentos.
+            </p>
+          </div>
+        </div>
+      `;
+      
+      // Scroll suave al resultado
+      document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    function mostrarInfoMedicamentoGenerico(nombreMedicamento) {
+      const nombreCapitalizado = nombreMedicamento.charAt(0).toUpperCase() + nombreMedicamento.slice(1);
+      
+      document.getElementById('resultsArea').innerHTML = `
+        <div class="glass-card p-6 rounded-2xl fade-in">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-white text-2xl font-bold flex items-center">
+              <span class="text-3xl mr-3">💊</span> ${nombreCapitalizado}
+            </h3>
+          </div>
+          
+          <div class="bg-yellow-500 bg-opacity-20 p-5 rounded-xl border-2 border-yellow-400 mb-5">
+            <p class="text-white text-sm text-center">
+              <span class="text-2xl mr-2">ℹ️</span>
+              <span class="font-bold">Este medicamento no está en nuestra base de datos detallada.</span>
+              <br>
+              <span class="text-xs opacity-90 mt-2 block">A continuación se muestran recomendaciones generales de seguridad.</span>
+            </p>
+          </div>
+          
+          <div class="space-y-5">
+            <!-- Recomendaciones generales -->
+            <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">📋</span> Recomendaciones Generales
+              </h4>
+              <ul class="space-y-2 text-white text-sm">
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Administrar según la prescripción médica exacta</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Respetar horarios y dosis indicadas por el médico</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Verificar fecha de caducidad antes de administrar</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Conservar en condiciones adecuadas (temperatura, luz, humedad)</span>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Qué verificar -->
+            <div class="bg-blue-500 bg-opacity-20 p-5 rounded-xl border-2 border-blue-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">🔍</span> Información a Verificar con el Médico
+              </h4>
+              <ul class="space-y-2 text-white text-sm">
+                <li class="flex items-start">
+                  <span class="mr-2">✓</span>
+                  <span><strong>Indicación:</strong> Para qué se prescribió este medicamento</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">✓</span>
+                  <span><strong>Dosis:</strong> Cantidad exacta y frecuencia de administración</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">✓</span>
+                  <span><strong>Vía de administración:</strong> Oral, tópica, sublingual, etc.</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">✓</span>
+                  <span><strong>Duración del tratamiento:</strong> Cuánto tiempo debe tomarse</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">✓</span>
+                  <span><strong>Interacciones:</strong> Con otros medicamentos que toma el paciente</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">✓</span>
+                  <span><strong>Efectos secundarios:</strong> Qué reacciones vigilar</span>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Señales de alerta -->
+            <div class="bg-red-500 bg-opacity-20 p-5 rounded-xl border-2 border-red-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">🚨</span> Señales de Alerta
+              </h4>
+              <p class="text-white text-sm mb-3">Contactar al médico inmediatamente si aparece:</p>
+              <ul class="space-y-2 text-white text-sm">
+                <li class="flex items-start">
+                  <span class="mr-2">⚠️</span>
+                  <span>Reacciones alérgicas (rash, picazón, hinchazón, dificultad respiratoria)</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">⚠️</span>
+                  <span>Efectos secundarios severos o inusuales</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">⚠️</span>
+                  <span>Cambios en el estado de conciencia o comportamiento</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">⚠️</span>
+                  <span>Síntomas que empeoran en lugar de mejorar</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">⚠️</span>
+                  <span>Signos de sobredosis o intoxicación</span>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Precauciones especiales -->
+            <div class="bg-purple-500 bg-opacity-20 p-5 rounded-xl border-2 border-purple-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">👵</span> Precauciones en Adultos Mayores
+              </h4>
+              <ul class="space-y-2 text-white text-sm">
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Los adultos mayores pueden ser más sensibles a los medicamentos</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Mayor riesgo de efectos secundarios e interacciones</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Función renal y hepática puede estar disminuida</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Monitorear cuidadosamente la respuesta al tratamiento</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Mantener lista actualizada de todos los medicamentos que toma</span>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Registro y seguimiento -->
+            <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">📝</span> Registro y Seguimiento
+              </h4>
+              <ul class="space-y-2 text-white text-sm">
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Anotar hora y dosis de cada administración</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Registrar cualquier efecto observado (positivo o negativo)</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>Llevar el registro a las consultas médicas</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">•</span>
+                  <span>No suspender ni modificar dosis sin consultar al médico</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="mt-6 bg-red-500 bg-opacity-30 p-5 rounded-xl border-2 border-red-500">
+            <p class="text-white text-sm text-center font-bold">
+              <span class="text-2xl mr-2">⚕️</span>
+              IMPORTANTE: Esta es información general de seguridad.
+              <br>
+              <span class="text-xs mt-2 block">Para información específica sobre "${nombreCapitalizado}", consulte con el médico tratante, farmacéutico o revise el prospecto del medicamento.</span>
+            </p>
+          </div>
+          
+          <div class="mt-4 bg-blue-500 bg-opacity-20 p-4 rounded-xl border-2 border-blue-400">
+            <p class="text-white text-xs text-center">
+              <span class="font-bold">💡 Sugerencia:</span> Si este medicamento es de uso frecuente, solicita al médico información detallada por escrito sobre su uso, efectos y precauciones.
+            </p>
+          </div>
+        </div>
+      `;
+      
+      // Scroll suave al resultado
+      document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    window.buscarRecomendacion = function() {
+      const input = document.getElementById('situacionInput');
+      const query = input.value.toLowerCase().trim();
+      
+      if (!query) {
+        showToast('⚠️ Describe la situación del paciente', 'error');
+        return;
+      }
+      
+      // Buscar coincidencia
+      let recomendacion = null;
+      let key = null;
+      
+      for (const [k, v] of Object.entries(recomendacionesDB)) {
+        if (k.includes(query) || query.includes(k) || v.problema.toLowerCase().includes(query)) {
+          recomendacion = v;
+          key = k;
+          break;
+        }
+      }
+      
+      if (!recomendacion) {
+        document.getElementById('resultsArea').innerHTML = `
+          <div class="glass-card p-8 rounded-2xl text-center fade-in">
+            <div class="text-6xl mb-4">🤔</div>
+            <h3 class="text-white text-xl font-bold mb-2">Situación no encontrada</h3>
+            <p class="text-white text-sm opacity-80">No se encontraron recomendaciones específicas para "${query}".</p>
+            <p class="text-white text-xs mt-4 opacity-70">Intenta reformular la consulta o selecciona una situación com��n.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      mostrarRecomendaciones(recomendacion, key);
+    };
+    
+    window.buscarRecomendacionDirecta = function(key) {
+      const recomendacion = recomendacionesDB[key];
+      document.getElementById('situacionInput').value = key;
+      mostrarRecomendaciones(recomendacion, key);
+    };
+    
+    function mostrarRecomendaciones(rec, titulo) {
+      document.getElementById('resultsArea').innerHTML = `
+        <div class="glass-card p-6 rounded-2xl fade-in">
+          <div class="mb-6">
+            <h3 class="text-white text-2xl font-bold mb-2 flex items-center">
+              <span class="text-3xl mr-3">💡</span> ${titulo.charAt(0).toUpperCase() + titulo.slice(1)}
+            </h3>
+            <p class="text-white text-sm opacity-90">${rec.problema}</p>
+          </div>
+          
+          <div class="space-y-5">
+            <!-- Posibles causas -->
+            <div class="bg-white bg-opacity-10 p-5 rounded-xl">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">🔍</span> Posibles causas
+              </h4>
+              <ul class="space-y-2">
+                ${rec.causas.map(causa => `
+                  <li class="text-white text-sm flex items-start">
+                    <span class="mr-2">•</span>
+                    <span>${causa}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+            
+            <!-- Recomendaciones -->
+            <div class="bg-green-500 bg-opacity-20 p-5 rounded-xl border-2 border-green-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">✅</span> Recomendaciones
+              </h4>
+              <ul class="space-y-2">
+                ${rec.recomendaciones.map(reco => `
+                  <li class="text-white text-sm flex items-start">
+                    <span class="mr-2">✓</span>
+                    <span>${reco}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+            
+            <!-- Soluciones prácticas -->
+            <div class="bg-blue-500 bg-opacity-20 p-5 rounded-xl border-2 border-blue-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">🛠️</span> Soluciones prácticas
+              </h4>
+              <ul class="space-y-2">
+                ${rec.soluciones.map(sol => `
+                  <li class="text-white text-sm flex items-start">
+                    <span class="mr-2">→</span>
+                    <span>${sol}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+            
+            <!-- Alertas -->
+            <div class="bg-red-500 bg-opacity-20 p-5 rounded-xl border-2 border-red-400">
+              <h4 class="text-white font-bold text-lg mb-3 flex items-center">
+                <span class="text-xl mr-2">🚨</span> Señales de alerta
+              </h4>
+              <ul class="space-y-2">
+                ${rec.alertas.map(alerta => `
+                  <li class="text-white text-sm font-semibold flex items-start">
+                    <span class="mr-2">${alerta.split(' ')[0]}</span>
+                    <span>${alerta.substring(alerta.indexOf(' ') + 1)}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          </div>
+          
+          <div class="mt-6 bg-purple-500 bg-opacity-20 p-4 rounded-xl border-2 border-purple-400">
+            <p class="text-white text-xs text-center">
+              <span class="font-bold">��� Contexto del paciente:</span> Adulto mayor de 93 años con movilidad limitada. Estas recomendaciones están adaptadas a sus necesidades específicas.
+            </p>
+          </div>
+        </div>
+      `;
+      
+      // Scroll suave al resultado
+      document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
     function renderEstadisticas() {
       const content = document.getElementById('tabContent');
@@ -1654,7 +2854,7 @@
           const success = saveReportsToLocal();
           
           if (success) {
-            showToast('✓ Reporte actualizado exitosamente', 'success');
+            showToast('�� Reporte actualizado exitosamente', 'success');
             // Volver al historial
             document.querySelectorAll('.tab-btn')[1].click();
           } else {
@@ -1714,5 +2914,5 @@
 
     initApp();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a0294494646a912',t:'MTc2MzQxNzY0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a036169625fa912',t:'MTc2MzQyNjA0OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
